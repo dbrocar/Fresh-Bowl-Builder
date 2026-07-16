@@ -1,13 +1,262 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { useAppData } from "@/hooks/use-app-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, AlertCircle, RefreshCw, Calendar, Flame, Info, Sunrise, Moon } from "lucide-react";
-import { getDaysDiff } from "@/lib/storage";
 import { cn } from "@/lib/utils";
+import { Sunrise, Moon, CheckCircle2, Circle, RefreshCw, ChevronRight, Flame, Beef, Carrot } from "lucide-react";
+import { getScheduledMeal, getEffectiveMeal as getEffectiveMealFromRotation, getDaySchedule, toDateKey, today, formatDateLong, PROTEIN_CATALOG, STARCH_OPTIONS, VEG_OPTIONS, ORGAN_OPTIONS, type SlotMeal, type DayAbbrev } from "@/lib/rotation";
+import { isFed, markFed, SUPP_NAMES, isSuppChecked, toggleSupp, getSwap, setSwap, type SwapType } from "@/lib/feedlog";
+import { getEffectiveMeal } from "@/lib/feedlog";
+import { calculateMER } from "@/lib/nutrition";
+import { computeMealAmounts, DEFAULT_AMOUNTS } from "@/lib/foods";
+
+// ── Swap options per slot type ──
+const SWAP_OPTIONS: Record<SwapType, string[]> = {
+  protein: PROTEIN_CATALOG.map(p => p.name),
+  starch: STARCH_OPTIONS,
+  veg: VEG_OPTIONS,
+  organ: ORGAN_OPTIONS,
+};
+
+// ── Slot config ──
+const SLOT_CONFIG = [
+  { type: "protein" as SwapType, emoji: "🥩", label: "Protein" },
+  { type: "starch" as SwapType, emoji: "🌾", label: "Starch" },
+  { type: "veg" as SwapType, emoji: "🥦", label: "Veggie" },
+  { type: "organ" as SwapType, emoji: "🫀", label: "Organ" },
+];
+
+interface SwapSheetProps {
+  ds: string;
+  slot: "am" | "pm";
+  type: SwapType;
+  current: string;
+  onClose: () => void;
+  onRefresh: () => void;
+}
+
+function SwapSheet({ ds, slot, type, current, onClose, onRefresh }: SwapSheetProps) {
+  const options = SWAP_OPTIONS[type];
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-[520px] bg-background rounded-t-2xl p-5 pb-8 space-y-3 shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4" />
+        <h3 className="font-serif font-bold text-lg text-foreground">Swap {type.charAt(0).toUpperCase() + type.slice(1)}</h3>
+        <p className="text-xs text-muted-foreground">Pick a replacement for this {slot.toUpperCase()} meal</p>
+        <div className="space-y-1.5 max-h-72 overflow-y-auto">
+          {options.map(opt => (
+            <button
+              key={opt}
+              className={cn(
+                "w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                opt === current
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted hover:bg-muted/70"
+              )}
+              onClick={() => {
+                setSwap(ds, slot, type, opt === current ? null : opt);
+                onRefresh();
+                onClose();
+              }}
+            >
+              {opt}
+              {opt === current && <span className="ml-2 text-xs opacity-70">(current)</span>}
+            </button>
+          ))}
+          {getSwap(ds, slot, type) && (
+            <button
+              className="w-full text-center px-4 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+              onClick={() => {
+                setSwap(ds, slot, type, null);
+                onRefresh();
+                onClose();
+              }}
+            >
+              ↩ Restore scheduled ingredient
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface MealCardProps {
+  ds: string;
+  slot: "am" | "pm";
+  meal: SlotMeal | null;
+  amounts: typeof DEFAULT_AMOUNTS;
+  fed: boolean;
+  onFedChange: (fed: boolean) => void;
+  onRefresh: () => void;
+}
+
+function MealCard({ ds, slot, meal, amounts, fed, onFedChange, onRefresh }: MealCardProps) {
+  const [swap, setSwapState] = useState<{ type: SwapType; current: string } | null>(null);
+  const [showSupps, setShowSupps] = useState(false);
+  const [suppTick, setSuppTick] = useState(0);
+
+  const handleSupp = (supp: string, checked: boolean) => {
+    toggleSupp(ds, slot, supp, checked);
+    setSuppTick(t => t + 1);
+  };
+
+  if (!meal) {
+    return (
+      <Card className="border-none shadow-md bg-card">
+        <div className="bg-muted/30 px-4 py-2.5 border-b border-border/30 flex items-center gap-2">
+          {slot === "am" ? <Sunrise className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+          <span className="font-bold font-serif text-sm">{slot === "am" ? "Morning Bowl" : "Evening Bowl"}</span>
+        </div>
+        <CardContent className="p-4 text-center text-muted-foreground text-sm">
+          No meal scheduled — build your plan in Profile.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const isAM = slot === "am";
+
+  return (
+    <>
+      <Card className={cn(
+        "border-none shadow-md transition-all duration-300",
+        fed ? "shadow-green-500/10 ring-1 ring-green-500/20" : "bg-card"
+      )}>
+        {/* Header */}
+        <div className={cn(
+          "px-4 py-2.5 flex justify-between items-center border-b",
+          isAM ? "bg-amber-500/10 border-amber-500/10" : "bg-indigo-500/10 border-indigo-500/10"
+        )}>
+          <h3 className="font-bold font-serif text-sm flex items-center gap-2 text-foreground">
+            {isAM ? <Sunrise className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+            {isAM ? "Morning Bowl" : "Evening Bowl"}
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium">
+              ~{(amounts.protein + amounts.starch + amounts.veg + amounts.organ).toFixed(1)} oz
+            </span>
+            <button
+              onClick={() => { onFedChange(!fed); onRefresh(); }}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all duration-200",
+                fed
+                  ? "bg-green-500 text-white shadow-sm shadow-green-500/30"
+                  : "bg-muted text-muted-foreground hover:bg-green-100 dark:hover:bg-green-900/20 hover:text-green-600"
+              )}
+            >
+              {fed ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+              {fed ? "Fed ✓" : "Mark Fed"}
+            </button>
+          </div>
+        </div>
+
+        {/* Ingredients */}
+        <CardContent className="p-0">
+          <div className="divide-y divide-border/40">
+            {SLOT_CONFIG.map(({ type, emoji, label }) => {
+              const value = meal[type === "organ" ? "organ" : type as keyof SlotMeal];
+              if (!value) return null;
+              const oz = amounts[type as keyof typeof amounts] ?? 0;
+              const hasSwap = !!getSwap(ds, slot, type);
+              return (
+                <button
+                  key={type}
+                  className="w-full p-3 flex items-center gap-3 bg-card hover:bg-muted/30 transition-colors text-left active:scale-[0.99]"
+                  onClick={() => setSwapState({ type, current: value as string })}
+                >
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm">{emoji}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className={cn("font-semibold text-sm truncate", hasSwap && "text-primary")}>{value as string}</div>
+                    <div className="text-[10px] text-muted-foreground">{label} · {oz}oz</div>
+                  </div>
+                  {hasSwap && <span className="text-[9px] font-bold text-primary/80 bg-primary/10 px-1.5 py-0.5 rounded uppercase tracking-wide">Swapped</span>}
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Supplements */}
+          <button
+            className="w-full px-4 py-2.5 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground hover:bg-muted/20 transition-colors"
+            onClick={() => setShowSupps(s => !s)}
+          >
+            <span className="font-semibold flex items-center gap-1.5">🧂 Daily Supplements</span>
+            <span className={cn(
+              "font-bold px-2 py-0.5 rounded-full text-[10px]",
+              allSuppsCheckedLocal(ds, slot, suppTick)
+                ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                : "bg-muted text-muted-foreground"
+            )}>
+              {countCheckedSupps(ds, slot, suppTick)}/{SUPP_NAMES.length} added
+            </span>
+          </button>
+
+          {showSupps && (
+            <div className="px-4 pb-3 space-y-1.5">
+              {SUPP_NAMES.map(supp => (
+                <label key={supp} className="flex items-center gap-2.5 cursor-pointer py-0.5">
+                  <input
+                    type="checkbox"
+                    checked={isSuppChecked(ds, slot, supp)}
+                    onChange={e => handleSupp(supp, e.target.checked)}
+                    className="w-4 h-4 accent-primary rounded"
+                  />
+                  <span className="text-sm text-foreground">{supp}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {swap && (
+        <SwapSheet
+          ds={ds}
+          slot={slot}
+          type={swap.type}
+          current={swap.current}
+          onClose={() => setSwapState(null)}
+          onRefresh={onRefresh}
+        />
+      )}
+    </>
+  );
+}
+
+function allSuppsCheckedLocal(ds: string, slot: "am" | "pm", _tick: number) {
+  return SUPP_NAMES.every(s => isSuppChecked(ds, slot, s));
+}
+function countCheckedSupps(ds: string, slot: "am" | "pm", _tick: number) {
+  return SUPP_NAMES.filter(s => isSuppChecked(ds, slot, s)).length;
+}
 
 export function HomePage({ setView }: { setView: (v: string) => void }) {
   const { activeDog } = useAppData();
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => setTick(t => t + 1), []);
+
+  const now = today();
+  const ds = toDateKey(now);
+
+  const scheduled = getDaySchedule(now);
+  const amScheduled = scheduled?.am ?? null;
+  const pmScheduled = scheduled?.pm ?? null;
+  const amMeal = amScheduled ? getEffectiveMeal(ds, "am", amScheduled) : null;
+  const pmMeal = pmScheduled ? getEffectiveMeal(ds, "pm", pmScheduled) : null;
+
+  const amFed = isFed(ds, "am");
+  const pmFed = isFed(ds, "pm");
+
+  const mer = activeDog
+    ? calculateMER(activeDog.weightKg, activeDog.activityLevel, activeDog.bodyCondition, activeDog.ageMonths, activeDog.neutered)
+    : 0;
+  const amounts = mer > 0 ? computeMealAmounts(mer) : DEFAULT_AMOUNTS;
 
   if (!activeDog) {
     return (
@@ -24,148 +273,104 @@ export function HomePage({ setView }: { setView: (v: string) => void }) {
     );
   }
 
-  const rotation = activeDog.currentRotation;
-  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-  const todayMeal = rotation?.weeklyMeals.find(m => m.day === todayName);
-  const daysInRotation = rotation ? getDaysDiff(rotation.generatedAt, new Date().toISOString()) : 0;
-  const totalVars = activeDog.favorites.proteins.length + activeDog.favorites.organs.length + activeDog.favorites.veggies.length;
-  const aafcoOk = totalVars >= 5;
-
-  const mealGrams = todayMeal ? Math.round(todayMeal.gramsTotal / 2) : 0;
-  const mealKcal = todayMeal ? Math.round(todayMeal.kcal / 2) : 0;
-
-  const MealCard = ({ label, icon: Icon, iconColor }: { label: string; icon: typeof Sunrise; iconColor: string }) => (
-    <Card className="overflow-hidden border-none shadow-md shadow-primary/5 bg-card">
-      <div className="bg-primary/10 px-4 py-3 flex justify-between items-center border-b border-primary/10">
-        <h3 className="font-bold font-serif text-base flex items-center gap-2 text-foreground">
-          <Icon className={cn("w-4 h-4", iconColor)} />
-          {label}
-        </h3>
-        <div className="bg-background text-xs font-bold px-2.5 py-1 rounded-full text-foreground shadow-sm">
-          ~{mealGrams}g · {mealKcal} kcal
-        </div>
-      </div>
-      <CardContent className="p-0">
-        <div className="divide-y divide-border/50">
-          <div className="p-3.5 flex items-center gap-3 bg-card hover:bg-muted/30 transition-colors">
-            <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0 text-base">🥩</div>
-            <div className="min-w-0">
-              <div className="font-semibold text-sm">{todayMeal?.protein ?? "—"}</div>
-              <div className="text-xs text-muted-foreground">Muscle Meat · {rotation?.breakdown.proteinPct ?? 70}% of bowl</div>
-            </div>
-          </div>
-          <div className="p-3.5 flex items-center gap-3 bg-card hover:bg-muted/30 transition-colors">
-            <div className="w-9 h-9 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0 text-base">🫀</div>
-            <div className="min-w-0">
-              <div className="font-semibold text-sm">{todayMeal?.organ ?? "—"}</div>
-              <div className="text-xs text-muted-foreground">Secreting Organ · {rotation?.breakdown.organPct ?? 10}% of bowl</div>
-            </div>
-          </div>
-          <div className="p-3.5 flex items-center gap-3 bg-card hover:bg-muted/30 transition-colors">
-            <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0 text-base">🥦</div>
-            <div className="min-w-0">
-              <div className="font-semibold text-sm">{todayMeal?.veggie ?? "—"}</div>
-              <div className="text-xs text-muted-foreground">Vegetables · {rotation?.breakdown.veggiePct ?? 12}% of bowl</div>
-            </div>
-          </div>
-          {todayMeal?.starch && (
-            <div className="p-3.5 flex items-center gap-3 bg-card hover:bg-muted/30 transition-colors">
-              <div className="w-9 h-9 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0 text-base">🥔</div>
-              <div className="min-w-0">
-                <div className="font-semibold text-sm">{todayMeal.starch}</div>
-                <div className="text-xs text-muted-foreground">Starch · {rotation?.breakdown.starchPct ?? 8}% of bowl</div>
-              </div>
-            </div>
-          )}
-          {todayMeal && todayMeal.constants.length > 0 && (
-            <div className="p-3.5 bg-muted/20">
-              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5" /> Daily Constants
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {todayMeal.constants.map((c, i) => (
-                  <span key={i} className="bg-background border border-border px-2 py-0.5 rounded-md text-xs font-medium shadow-sm">{c}</span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+  const todayFormatted = formatDateLong(now);
+  const bothFed = amFed && pmFed;
 
   return (
-    <div className="space-y-5 pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-4 pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex justify-between items-end pt-1">
         <div>
-          <h2 className="text-3xl font-serif font-bold tracking-tight mb-1 text-foreground">Hi, {activeDog.name} 🐾</h2>
-          <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-            <Calendar className="w-4 h-4" /> {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-          </p>
+          <h2 className="text-2xl font-serif font-bold tracking-tight text-foreground">
+            Hi, {activeDog.name} 🐾
+          </h2>
+          <p className="text-xs font-medium text-muted-foreground mt-0.5">{todayFormatted}</p>
         </div>
-        {rotation && (
-          <div className="text-right">
-            <div className="text-2xl font-bold text-primary tracking-tighter flex items-center justify-end gap-1">
-              {rotation.dailyKcal} <Flame className="w-5 h-5 text-orange-500" />
-            </div>
-            <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">kcal / day</div>
-          </div>
-        )}
+        <div className="text-right">
+          {mer > 0 && (
+            <>
+              <div className="text-xl font-bold text-primary flex items-center gap-1 justify-end">
+                {mer} <Flame className="w-4 h-4 text-orange-500" />
+              </div>
+              <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">kcal / day</div>
+            </>
+          )}
+        </div>
       </div>
 
-      {!rotation ? (
-        <Card className="border-dashed border-2 bg-transparent shadow-none">
-          <CardContent className="pt-6 flex flex-col items-center justify-center text-center space-y-3">
-            <Info className="w-10 h-10 text-muted-foreground/50" />
-            <div className="font-semibold text-foreground">No Meal Rotation Set</div>
-            <p className="text-xs text-muted-foreground">Pick your dog's favorite ingredients to generate a balanced 7-day meal plan.</p>
-            <Button onClick={() => setView('profile')} variant="default" size="sm" className="mt-2">
-              <RefreshCw className="w-4 h-4 mr-2" /> Build Rotation
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* AM Meal */}
-          <MealCard label="🌅 Morning Bowl" icon={Sunrise} iconColor="text-amber-500" />
-
-          {/* PM Meal */}
-          <MealCard label="🌙 Evening Bowl" icon={Moon} iconColor="text-indigo-400" />
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <Card className="border-none shadow-sm">
-              <CardContent className="p-3 text-center">
-                <div className="text-xs text-muted-foreground font-medium mb-1">Treat Budget</div>
-                <div className="text-lg font-bold text-foreground">{rotation.treatBudgetKcal}</div>
-                <div className="text-[10px] text-muted-foreground">kcal/day</div>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm">
-              <CardContent className="p-3 text-center">
-                <div className="text-xs text-muted-foreground font-medium mb-1">Per Meal</div>
-                <div className="text-lg font-bold text-foreground">{mealGrams}g</div>
-                <div className="text-[10px] text-muted-foreground">each bowl</div>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm">
-              <CardContent className="p-3 text-center">
-                <div className="text-xs text-muted-foreground font-medium mb-1">Balance</div>
-                <div className={cn("text-sm font-bold", aafcoOk ? "text-green-600 dark:text-green-400" : "text-amber-500")}>
-                  {aafcoOk ? "✅ Good" : "⚠️ Vary"}
-                </div>
-              </CardContent>
-            </Card>
+      {/* Fed status banner */}
+      {bothFed && (
+        <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 flex items-center gap-2.5">
+          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+          <div>
+            <div className="font-bold text-sm text-green-700 dark:text-green-300">Both meals logged today! 🎉</div>
+            <div className="text-[11px] text-muted-foreground">Great job keeping up with {activeDog.name}'s nutrition.</div>
           </div>
+        </div>
+      )}
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-medium bg-muted/50 rounded-lg p-3">
-            <span>Day {daysInRotation + 1} of current rotation</span>
-            <Button variant="link" size="sm" className="h-auto p-0 text-primary" onClick={() => setView('profile')}>
-              Edit Plan <RefreshCw className="w-3 h-3 ml-1" />
-            </Button>
+      {/* Meal stats */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-card rounded-xl p-2.5 text-center border border-border/40 shadow-sm">
+          <div className="text-lg font-bold text-foreground">{amounts.protein + amounts.starch + amounts.veg + amounts.organ}oz</div>
+          <div className="text-[10px] text-muted-foreground font-medium">per meal</div>
+        </div>
+        <div className="bg-card rounded-xl p-2.5 text-center border border-border/40 shadow-sm">
+          <div className={cn("text-lg font-bold", amFed ? "text-green-500" : "text-muted-foreground")}>
+            {amFed ? "✓" : "—"}
           </div>
-        </>
+          <div className="text-[10px] text-muted-foreground font-medium">AM fed</div>
+        </div>
+        <div className="bg-card rounded-xl p-2.5 text-center border border-border/40 shadow-sm">
+          <div className={cn("text-lg font-bold", pmFed ? "text-green-500" : "text-muted-foreground")}>
+            {pmFed ? "✓" : "—"}
+          </div>
+          <div className="text-[10px] text-muted-foreground font-medium">PM fed</div>
+        </div>
+      </div>
+
+      {/* AM Meal */}
+      <MealCard
+        key={`am-${tick}`}
+        ds={ds}
+        slot="am"
+        meal={amMeal}
+        amounts={amounts}
+        fed={amFed}
+        onFedChange={fed => markFed(ds, "am", fed)}
+        onRefresh={refresh}
+      />
+
+      {/* PM Meal */}
+      <MealCard
+        key={`pm-${tick}`}
+        ds={ds}
+        slot="pm"
+        meal={pmMeal}
+        amounts={amounts}
+        fed={pmFed}
+        onFedChange={fed => markFed(ds, "pm", fed)}
+        onRefresh={refresh}
+      />
+
+      {/* Quick nav */}
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setView('recipebox')}>
+          📅 View 4-Week Plan
+        </Button>
+        <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setView('nutrition')}>
+          🥗 Nutrition Stats
+        </Button>
+      </div>
+
+      {/* Weight indicator */}
+      {activeDog.weightKg > 0 && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+          <span>{activeDog.name} · {(activeDog.weightKg * 2.205).toFixed(0)} lbs · {activeDog.activityLevel} activity</span>
+          <Button variant="link" size="sm" className="h-auto p-0 text-primary text-xs" onClick={() => setView('profile')}>
+            Edit <ChevronRight className="w-3 h-3 ml-0.5" />
+          </Button>
+        </div>
       )}
     </div>
   );

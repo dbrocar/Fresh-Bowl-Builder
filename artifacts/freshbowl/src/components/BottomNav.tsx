@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, ListOrdered, PieChart, Calculator, BookOpen } from "lucide-react";
+import { Home, CalendarDays, PieChart, Calculator, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BottomNavProps {
@@ -9,11 +9,11 @@ interface BottomNavProps {
 
 export function BottomNav({ view, setView }: BottomNavProps) {
   const navs = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'recipebox', label: 'Recipe Box', icon: ListOrdered },
-    { id: 'nutrition', label: 'Nutrition', icon: PieChart },
-    { id: 'utilities', label: 'Utilities', icon: Calculator },
-    { id: 'guide', label: 'Guide', icon: BookOpen },
+    { id: 'home',       label: 'Home',      icon: Home },
+    { id: 'recipebox',  label: 'Plan',       icon: CalendarDays },
+    { id: 'nutrition',  label: 'Nutrition',  icon: PieChart },
+    { id: 'utilities',  label: 'Utilities',  icon: Calculator },
+    { id: 'guide',      label: 'Guide',      icon: BookOpen },
   ];
 
   return (

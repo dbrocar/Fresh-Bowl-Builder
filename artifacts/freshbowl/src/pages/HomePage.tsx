@@ -1,0 +1,171 @@
+import React from "react";
+import { useAppData } from "@/hooks/use-app-data";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ShieldCheck, AlertCircle, RefreshCw, Calendar, Flame, FlameKindling, Info } from "lucide-react";
+import { getDaysDiff } from "@/lib/storage";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+
+export function HomePage({ setView }: { setView: (v: string) => void }) {
+  const { activeDog } = useAppData();
+
+  if (!activeDog) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
+        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+          <span className="text-4xl">🐶</span>
+        </div>
+        <h2 className="text-2xl font-serif font-bold text-foreground">Welcome to FreshBowl</h2>
+        <p className="text-muted-foreground text-sm">Add your dog to start planning healthy, balanced fresh meals.</p>
+        <Button onClick={() => setView('profile')} size="lg" className="mt-4 font-bold tracking-wide">
+          Set Up Profile
+        </Button>
+      </div>
+    );
+  }
+
+  const rotation = activeDog.currentRotation;
+  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const todayMeal = rotation?.weeklyMeals.find(m => m.day === todayName);
+  
+  const daysInRotation = rotation ? getDaysDiff(rotation.generatedAt, new Date().toISOString()) : 0;
+  
+  // Fake AAFCO compliance score based on number of varied ingredients in rotation
+  const totalVars = activeDog.favorites.proteins.length + activeDog.favorites.organs.length + activeDog.favorites.veggies.length;
+  const aafcoOk = totalVars >= 5;
+
+  return (
+    <div className="space-y-6 pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      
+      {/* Header Stat */}
+      <div className="flex justify-between items-end">
+        <div>
+          <h2 className="text-3xl font-serif font-bold tracking-tight mb-1 text-foreground">Hi, {activeDog.name}</h2>
+          <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+            <Calendar className="w-4 h-4" /> {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — {todayName}
+          </p>
+        </div>
+        {rotation && (
+          <div className="text-right">
+            <div className="text-2xl font-bold text-primary tracking-tighter flex items-center justify-end gap-1">
+              {rotation.dailyKcal} <Flame className="w-5 h-5 text-orange-500" />
+            </div>
+            <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Daily kcal</div>
+          </div>
+        )}
+      </div>
+
+      {!rotation ? (
+        <Card className="border-dashed border-2 bg-transparent shadow-none">
+          <CardContent className="pt-6 flex flex-col items-center justify-center text-center space-y-3">
+            <Info className="w-10 h-10 text-muted-foreground/50" />
+            <div className="font-semibold text-foreground">No Meal Rotation Set</div>
+            <p className="text-xs text-muted-foreground">Pick your dog's favorite ingredients to generate a balanced 7-day meal plan.</p>
+            <Button onClick={() => setView('profile')} variant="default" size="sm" className="mt-2">
+              <RefreshCw className="w-4 h-4 mr-2" /> Build Rotation
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Today's Plan */}
+          <Card className="overflow-hidden border-none shadow-md shadow-primary/5 bg-card">
+            <div className="bg-primary/10 px-4 py-3 flex justify-between items-center border-b border-primary/10">
+              <h3 className="font-bold font-serif text-lg text-primary-dark">Today's Bowl</h3>
+              <div className="bg-background text-xs font-bold px-2.5 py-1 rounded-full text-foreground shadow-sm">
+                ~ {todayMeal?.gramsTotal}g / meal (x2)
+              </div>
+            </div>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border/50">
+                <div className="p-4 flex justify-between items-center bg-card hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 font-bold text-lg">🥩</div>
+                    <div>
+                      <div className="font-semibold">{todayMeal?.protein}</div>
+                      <div className="text-xs text-muted-foreground">Muscle Meat ({(rotation.breakdown.proteinPct)}%)</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 flex justify-between items-center bg-card hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 font-bold text-lg">🫀</div>
+                    <div>
+                      <div className="font-semibold">{todayMeal?.organ}</div>
+                      <div className="text-xs text-muted-foreground">Secreting Organ ({(rotation.breakdown.organPct)}%)</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 flex justify-between items-center bg-card hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 font-bold text-lg">🥦</div>
+                    <div>
+                      <div className="font-semibold">{todayMeal?.veggie}</div>
+                      <div className="text-xs text-muted-foreground">Vegetables ({(rotation.breakdown.veggiePct)}%)</div>
+                    </div>
+                  </div>
+                </div>
+                {todayMeal?.starch && (
+                  <div className="p-4 flex justify-between items-center bg-card hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600 font-bold text-lg">🥔</div>
+                      <div>
+                        <div className="font-semibold">{todayMeal?.starch}</div>
+                        <div className="text-xs text-muted-foreground">Starch ({(rotation.breakdown.starchPct)}%)</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="p-4 bg-muted/20">
+                  <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5"/> Daily Constants</div>
+                  <div className="flex flex-wrap gap-2">
+                    {todayMeal?.constants.map((c, i) => (
+                      <span key={i} className="bg-background border border-border px-2.5 py-1 rounded-md text-xs font-medium shadow-sm">{c}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Stats Grid */}
+          <div className="grid grid-cols-2 gap-3">
+            <Card className="bg-gradient-to-br from-card to-muted/30 border-none shadow-sm">
+              <CardContent className="p-4 flex flex-col h-full justify-between">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-3">
+                  <FlameKindling className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground font-medium mb-1">Treat Budget</div>
+                  <div className="text-xl font-bold">{rotation.treatBudgetKcal} <span className="text-sm font-normal text-muted-foreground">kcal/day</span></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-card to-muted/30 border-none shadow-sm">
+              <CardContent className="p-4 flex flex-col h-full justify-between">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-3">
+                  {aafcoOk ? <ShieldCheck className="w-4 h-4 text-green-600" /> : <AlertCircle className="w-4 h-4 text-amber-500" />}
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground font-medium mb-1">Compliance Estimate</div>
+                  <div className={cn("text-sm font-bold", aafcoOk ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-500")}>
+                    {aafcoOk ? "Likely Balanced ✅" : "Needs Variety ⚠️"}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground font-medium bg-muted/50 rounded-lg p-3">
+            <span>Day {daysInRotation + 1} on current rotation</span>
+            <Button variant="link" size="sm" className="h-auto p-0 text-primary hove:text-primary-dark" onClick={() => setView('profile')}>
+              Edit Plan <RefreshCw className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

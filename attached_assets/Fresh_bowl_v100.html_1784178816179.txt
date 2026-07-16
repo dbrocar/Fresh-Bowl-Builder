@@ -1,0 +1,1764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>🐾 Dog Health Calculators</title>
+    <style>
+        /* ── Reset & Base ── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        :root {
+            --warm-bg: #fdf6ed;
+            --card-bg: #ffffff;
+            --primary: #c97b4a;
+            --primary-dark: #a85f35;
+            --primary-light: #f0d5b8;
+            --text: #3d2b1f;
+            --text-light: #7a5f4a;
+            --shadow: 0 6px 20px rgba(60, 40, 20, 0.10);
+            --radius: 20px;
+            --radius-sm: 12px;
+            --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        body {
+            background: var(--warm-bg);
+            color: var(--text);
+            font-family: var(--font);
+            min-height: 100vh;
+            padding: 16px 12px 80px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .app-wrap {
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        /* ── Header ── */
+        .app-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding: 4px 0;
+        }
+        .app-header .logo {
+            font-size: 32px;
+            line-height: 1;
+        }
+        .app-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            letter-spacing: -0.3px;
+        }
+        .app-header h1 small {
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text-light);
+            display: block;
+            margin-top: -2px;
+        }
+
+        /* ── Dog Selector ── */
+        .dog-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            background: var(--card-bg);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+        .dog-bar .dog-chip {
+            background: var(--warm-bg);
+            border: 2px solid transparent;
+            border-radius: 99px;
+            padding: 5px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .dog-bar .dog-chip.active {
+            background: var(--primary);
+            border-color: var(--primary-dark);
+            color: #fff;
+        }
+        .dog-bar .dog-chip.add {
+            border-style: dashed;
+            border-color: var(--text-light);
+            background: transparent;
+        }
+        .dog-bar .dog-chip .del {
+            font-size: 12px;
+            opacity: 0.5;
+            margin-left: 4px;
+            cursor: pointer;
+        }
+        .dog-bar .dog-chip .del:hover {
+            opacity: 1;
+        }
+
+        /* ── Tabs ── */
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 16px;
+        }
+        .tabs button {
+            flex: 1 0 auto;
+            background: var(--card-bg);
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 9px 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-light);
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: 0.15s;
+            min-width: 60px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .tabs button.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(201, 123, 74, 0.35);
+        }
+        .tabs button:active {
+            transform: scale(0.96);
+        }
+
+        /* ── Panels ── */
+        .panel {
+            display: none;
+            animation: fadeUp 0.25s ease;
+        }
+        .panel.active {
+            display: block;
+        }
+        @keyframes fadeUp {
+            0% {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 18px 16px;
+            margin-bottom: 14px;
+            box-shadow: var(--shadow);
+        }
+        .card-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-title .emoji {
+            font-size: 22px;
+        }
+        .card-sub {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 14px;
+            line-height: 1.5;
+        }
+
+        /* ── Form Elements ── */
+        .field-group {
+            margin-bottom: 14px;
+        }
+        .field-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+        .field-group .hint {
+            font-size: 12px;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-left: 4px;
+        }
+        .field-group input,
+        .field-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #eee;
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-family: var(--font);
+            background: var(--warm-bg);
+            transition: 0.15s;
+            color: var(--text);
+        }
+        .field-group input:focus,
+        .field-group select:focus {
+            border-color: var(--primary);
+            outline: none;
+            background: #fff;
+        }
+        .field-group .row {
+            display: flex;
+            gap: 10px;
+        }
+        .field-group .row>* {
+            flex: 1;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 11px 22px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.15s;
+            font-family: var(--font);
+            background: var(--primary);
+            color: #fff;
+            width: 100%;
+        }
+        .btn:active {
+            transform: scale(0.96);
+        }
+        .btn-secondary {
+            background: var(--warm-bg);
+            color: var(--text);
+            border: 2px solid #eee;
+        }
+        .btn-secondary:active {
+            background: #e8ddd0;
+        }
+        .btn-success {
+            background: #4caf84;
+        }
+        .btn-success:active {
+            background: #3d9a72;
+        }
+        .btn-danger {
+            background: #e06767;
+        }
+        .btn-danger:active {
+            background: #c94f4f;
+        }
+
+        /* ── Results ── */
+        .result-box {
+            background: var(--warm-bg);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            margin-top: 14px;
+            border-left: 4px solid var(--primary);
+        }
+        .result-box .label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .result-box .value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin: 2px 0 4px;
+        }
+        .result-box .detail {
+            font-size: 14px;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+        .result-box .detail strong {
+            color: var(--text);
+        }
+
+        .save-prompt {
+            display: none;
+            margin-top: 14px;
+            padding: 14px 16px;
+            background: #f0f7f0;
+            border-radius: var(--radius-sm);
+            border: 2px solid #b8d9c0;
+        }
+        .save-prompt.show {
+            display: block;
+            animation: fadeUp 0.25s ease;
+        }
+        .save-prompt .prompt-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+        .save-prompt .btn-row {
+            display: flex;
+            gap: 8px;
+        }
+        .save-prompt .btn-row .btn {
+            flex: 1;
+        }
+
+        /* ── History / Records ── */
+        .record-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0ebe5;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .record-item:last-child {
+            border-bottom: none;
+        }
+        .record-item .date {
+            font-size: 12px;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+        .record-item .data {
+            color: var(--text);
+        }
+        .record-item .data strong {
+            color: var(--primary-dark);
+        }
+        .empty-records {
+            color: var(--text-light);
+            font-size: 14px;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        /* ── Tap Timer (RR) ── */
+        .tap-btn {
+            width: 100%;
+            padding: 28px 0;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 22px;
+            font-weight: 700;
+            background: var(--primary);
+            color: #fff;
+            cursor: pointer;
+            transition: 0.1s;
+            box-shadow: 0 4px 0 var(--primary-dark);
+            margin: 6px 0 12px;
+            font-family: var(--font);
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        .tap-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 var(--primary-dark);
+        }
+        .tap-btn.timer-active {
+            background: #4caf84;
+            box-shadow: 0 4px 0 #3d9a72;
+        }
+        .tap-btn.timer-active:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #3d9a72;
+        }
+        .tap-btn:disabled {
+            opacity: 0.6;
+            transform: none;
+            box-shadow: 0 4px 0 var(--primary-dark);
+            pointer-events: none;
+        }
+        .tap-display {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--text-light);
+            margin: 6px 0 10px;
+            flex-wrap: wrap;
+        }
+        .tap-display span {
+            background: var(--warm-bg);
+            padding: 4px 12px;
+            border-radius: 99px;
+        }
+
+        /* ── Schedule (Flea/Tick) ── */
+        .schedule-list {
+            margin-top: 10px;
+        }
+        .schedule-list .item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #f0ebe5;
+            font-size: 14px;
+        }
+        .schedule-list .item .num {
+            font-weight: 700;
+            color: var(--primary-dark);
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 480px) {
+            .tabs button {
+                font-size: 12px;
+                padding: 7px 8px;
+                min-width: 44px;
+            }
+            .field-group .row {
+                flex-direction: column;
+            }
+            .app-header h1 {
+                font-size: 19px;
+            }
+            .result-box .value {
+                font-size: 19px;
+            }
+        }
+
+        /* ── Misc ── */
+        .mt-8 {
+            margin-top: 8px;
+        }
+        .mt-12 {
+            margin-top: 12px;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .gap-6 {
+            gap: 6px;
+        }
+        .flex {
+            display: flex;
+        }
+        .flex-center {
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* scrollable schedule list */
+        .scroll-list {
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .scroll-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .scroll-list::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 99px;
+        }
+
+        /* badge */
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .badge-safe {
+            background: #d4edda;
+            color: #155724;
+        }
+        .badge-warn {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-wrap">
+
+        <!-- ─── HEADER ─── -->
+        <header class="app-header">
+            <span class="logo">🐾</span>
+            <div>
+                <h1>Dog Health Calculators <small>vet‑inspired tools for your best friend</small></h1>
+            </div>
+        </header>
+
+        <!-- ─── DOG BAR ─── -->
+        <div class="dog-bar" id="dogBar"></div>
+
+        <!-- ─── TABS ─── -->
+        <nav class="tabs" id="tabNav">
+            <button class="active" data-tab="rr">💨 RR</button>
+            <button data-tab="calories">🍽️ Calories</button>
+            <button data-tab="chocolate">🍫 Chocolate</button>
+            <button data-tab="flea">🐜 Flea</button>
+            <button data-tab="exercise">🏃 Exercise</button>
+            <button data-tab="treats">🍪 Treats</button>
+            <button data-tab="cost">💰 Cost</button>
+            <button data-tab="records">📋 Records</button>
+        </nav>
+
+        <!-- ─── PANELS ─── -->
+
+        <!-- 1. Resting Respiratory Rate -->
+        <div class="panel active" id="panel-rr">
+            <div class="card">
+                <div class="card-title"><span class="emoji">💨</span> Resting Respiratory Rate</div>
+                <div class="card-sub">Tap once for each breath your sleeping dog takes. Get BPM and an alert if it crosses 30 BPM.</div>
+                <div class="field-group">
+                    <label>Counting window</label>
+                    <select id="rrWindow">
+                        <option value="15">15 seconds</option>
+                        <option value="30" selected>30 seconds (recommended)</option>
+                        <option value="60">60 seconds</option>
+                    </select>
+                </div>
+                <button class="tap-btn" id="rrTapBtn">👆 Tap for each breath</button>
+                <div class="tap-display">
+                    <span id="rrTaps">Taps: 0</span>
+                    <span id="rrTimer">⏱️ 0s</span>
+                    <span id="rrBpm">BPM: —</span>
+                </div>
+                <div id="rrStatus" style="font-size:14px;color:var(--text-light);min-height:22px;"></div>
+                <div id="rrResult" class="result-box" style="display:none;">
+                    <div class="label">Result</div>
+                    <div class="value" id="rrResultBpm">—</div>
+                    <div class="detail" id="rrResultDetail"></div>
+                </div>
+                <div class="save-prompt" id="rrSavePrompt">
+                    <div class="prompt-text">📝 Save this reading to <span id="rrSaveDogName">—</span>'s profile?</div>
+                    <div class="btn-row">
+                        <button class="btn btn-success" onclick="saveRR()">✅ Yes, save</button>
+                        <button class="btn btn-secondary" onclick="dismissSave('rr')">Skip</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="emoji">📊</span> Recent RR Readings</div>
+                <div id="rrHistory"><div class="empty-records">No readings saved yet.</div></div>
+            </div>
+        </div>
+
+        <!-- 2. Calories Per Meal -->
+        <div class="panel" id="panel-calories">
+            <div class="card">
+                <div class="card-title"><span class="emoji">🍽️</span> Calories Per Meal</div>
+                <div class="card-sub">Daily kcal target + per‑meal split — adjusted for weight, age, activity, and neuter status.</div>
+                <div class="field-group">
+                    <label>Weight <span class="hint">(kg)</span></label>
+                    <input type="number" id="calWeight" value="25" step="0.5" min="1" max="120" />
+                </div>
+                <div class="field-group">
+                    <label>Age</label>
+                    <select id="calAge">
+                        <option value="puppy_under4">Puppy &lt; 4 months</option>
+                        <option value="puppy_4to12">Puppy 4–12 months</option>
+                        <option value="adult" selected>Adult (1+ year)</option>
+                        <option value="senior">Senior (7+ years)</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>Activity</label>
+                    <select id="calActivity">
+                        <option value="1.3">Sedentary / Low</option>
+                        <option value="1.6" selected>Moderate (neutered)</option>
+                        <option value="1.8">Moderate (intact)</option>
+                        <option value="2.0">High / Working</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>Body Condition</label>
+                    <select id="calCondition">
+                        <option value="1.0" selected>Optimal</option>
+                        <option value="0.85">Overweight</option>
+                        <option value="1.2">Underweight</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>Neutered</label>
+                    <select id="calNeutered">
+                        <option value="1.0" selected>Neutered</option>
+                        <option value="1.0">Intact</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>Meals per day</label>
+                    <select id="calMeals">
+                        <option value="1">1 meal</option>
+                        <option value="2" selected>2 meals</option>
+                        <option value="3">3 meals</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>Treats <span class="hint">(% of daily calories)</span></label>
+                    <select id="calTreats">
+                        <option value="0">0%</option>
+                        <option value="5" selected>5%</option>
+                        <option value="10">10%</option>
+                        <option value="15">15%</option>
+                        <option value="20">20%</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="calcCalories()">🧮 Calculate</button>
+                <div id="calResult" class="result-box" style="display:none;margin-top:14px;">
+                    <div class="label">Daily Calories (MER)</div>
+                    <div class="value" id="calMer">—</div>
+                    <div class="detail" id="calDetail"></div>
+                </div>
+                <div class="save-prompt" id="calSavePrompt">
+                    <div class="prompt-text">📝 Save this calculation to <span id="calSaveDogName">—</span>'s profile?</div>
+                    <div class="btn-row">
+                        <button class="btn btn-success" onclick="saveCalories()">✅ Yes, save</button>
+                        <button class="btn btn-secondary" onclick="dismissSave('cal')">Skip</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="emoji">📊</span> Recent Calorie Records</div>
+                <div id="calHistory"><div class="empty-records">No records saved yet.</div></div>
+            </div>
+        </div>
+
+        <!-- 3. Chocolate Toxicity -->
+        <div class="panel" id="panel-chocolate">
+            <div class="card">
+                <div class="card-title"><span class="emoji">🍫</span> Chocolate Toxicity</div>
+                <div class="card-sub">Estimate theobromine dose and risk zone. Always call your vet if your dog ate chocolate.</div>
+                <div class="field-group">
+                    <label>Dog weight <span class="hint">(kg)</span></label>
+                    <input type="number" id="chocWeight" value="25" step="0.5" min="1" />
+                </div>
+                <div class="field-group">
+                    <label>Chocolate type</label>
+                    <select id="chocType">
+                        <option value="20">White chocolate (very low)</option>
+                        <option value="45">Milk chocolate</option>
+                        <option value="150" selected>Dark chocolate (70%)</option>
+                        <option value="250">Baker's / unsweetened</option>
+                        <option value="900">Cocoa powder</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>Amount eaten <span class="hint">(grams)</span></label>
+                    <input type="number" id="chocAmount" value="50" step="1" min="0" />
+                    <div style="font-size:12px;color:var(--text-light);margin-top:4px;">💡 A typical chocolate bar is ~40–50g. A Hershey's Kiss is ~4.5g.</div>
+                </div>
+                <button class="btn" onclick="calcChocolate()">⚠️ Calculate risk</button>
+                <div id="chocResult" class="result-box" style="display:none;margin-top:14px;">
+                    <div class="label">Theobromine dose</div>
+                    <div class="value" id="chocDose">—</div>
+                    <div class="detail" id="chocDetail"></div>
+                </div>
+                <div class="save-prompt" id="chocSavePrompt">
+                    <div class="prompt-text">📝 Save this risk assessment to <span id="chocSaveDogName">—</span>'s profile?</div>
+                    <div class="btn-row">
+                        <button class="btn btn-success" onclick="saveChocolate()">✅ Yes, save</button>
+                        <button class="btn btn-secondary" onclick="dismissSave('choc')">Skip</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="emoji">📊</span> Recent Toxicity Checks</div>
+                <div id="chocHistory"><div class="empty-records">No checks saved yet.</div></div>
+            </div>
+        </div>
+
+        <!-- 4. Flea, Tick & Worming Schedule -->
+        <div class="panel" id="panel-flea">
+            <div class="card">
+                <div class="card-title"><span class="emoji">🐜</span> Flea, Tick &amp; Worming Schedule</div>
+                <div class="card-sub">Enter the last dose date and frequency. Get the next 6 due dates.</div>
+                <div class="field-group">
+                    <label>Medication name <span class="hint">(optional)</span></label>
+                    <input type="text" id="fleaMed" placeholder="e.g. NexGard, Bravecto, Drontal" />
+                </div>
+                <div class="field-group">
+                    <label>Last dose date</label>
+                    <input type="date" id="fleaLastDate" />
+                </div>
+                <div class="field-group">
+                    <label>Frequency</label>
+                    <select id="fleaFreq">
+                        <option value="30">Monthly (~30 days)</option>
+                        <option value="84">Long-acting flea/tick (84 days)</option>
+                        <option value="90">Routine deworming (90 days)</option>
+                        <option value="14">Puppy deworming (14 days)</option>
+                        <option value="180">6 months</option>
+                        <option value="365">Yearly</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="calcFlea()">📅 Generate schedule</button>
+                <div id="fleaResult" class="result-box" style="display:none;margin-top:14px;">
+                    <div class="label">Next due dates</div>
+                    <div class="schedule-list" id="fleaScheduleList"></div>
+                </div>
+                <div class="save-prompt" id="fleaSavePrompt">
+                    <div class="prompt-text">📝 Save this schedule to <span id="fleaSaveDogName">—</span>'s profile?</div>
+                    <div class="btn-row">
+                        <button class="btn btn-success" onclick="saveFlea()">✅ Yes, save</button>
+                        <button class="btn btn-secondary" onclick="dismissSave('flea')">Skip</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="emoji">📊</span> Recent Schedules</div>
+                <div id="fleaHistory"><div class="empty-records">No schedules saved yet.</div></div>
+            </div>
+        </div>
+
+        <!-- 5. Exercise Needs -->
+        <div class="panel" id="panel-exercise">
+            <div class="card">
+                <div class="card-title"><span class="emoji">🏃</span> Daily Exercise Needs</div>
+                <div class="card-sub">Walking minutes + high-intensity play, adjusted for breed, age, and weight.</div>
+                <div class="field-group">
+                    <label>Breed group</label>
+                    <select id="exBreed">
+                        <option value="toy">Toy (e.g. Chihuahua, Yorkie)</option>
+                        <option value="small">Small (e.g. Dachshund, Pug)</option>
+                        <option value="medium" selected>Medium (e.g. Spaniel, Border Collie)</option>
+                        <option value="large">Large (e.g. Labrador, Golden)</option>
+                        <option value="giant">Giant (e.g. Great Dane, Mastiff)</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>Age</label>
+                    <select id="exAge">
+                        <option value="puppy">Puppy (&lt; 1 year)</option>
+                        <option value="adult" selected>Adult (2–7 years)</option>
+                        <option value="senior">Senior (7+ years)</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>Weight <span class="hint">(kg)</span></label>
+                    <input type="number" id="exWeight" value="25" step="0.5" min="1" />
+                </div>
+                <div class="field-group">
+                    <label>Health state</label>
+                    <select id="exHealth">
+                        <option value="healthy" selected>Healthy</option>
+                        <option value="brachy">Brachycephalic (flat-faced)</option>
+                        <option value="cardiac">Cardiac / respiratory</option>
+                        <option value="ortho">Orthopaedic</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="calcExercise()">🏋️ Calculate plan</button>
+                <div id="exResult" class="result-box" style="display:none;margin-top:14px;">
+                    <div class="label">Daily Plan</div>
+                    <div class="value" id="exPlan">—</div>
+                    <div class="detail" id="exDetail"></div>
+                </div>
+                <div class="save-prompt" id="exSavePrompt">
+                    <div class="prompt-text">📝 Save this exercise plan to <span id="exSaveDogName">—</span>'s profile?</div>
+                    <div class="btn-row">
+                        <button class="btn btn-success" onclick="saveExercise()">✅ Yes, save</button>
+                        <button class="btn btn-secondary" onclick="dismissSave('ex')">Skip</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="emoji">📊</span> Recent Exercise Plans</div>
+                <div id="exHistory"><div class="empty-records">No plans saved yet.</div></div>
+            </div>
+        </div>
+
+        <!-- 6. Treat Allowance -->
+        <div class="panel" id="panel-treats">
+            <div class="card">
+                <div class="card-title"><span class="emoji">🍪</span> 10% Treat Allowance</div>
+                <div class="card-sub">Treats should be at most 10% of daily calories. Get your dog's exact treat budget in kcal.</div>
+                <div class="field-group">
+                    <label>Weight <span class="hint">(kg)</span></label>
+                    <input type="number" id="treatWeight" value="25" step="0.5" min="1" />
+                </div>
+                <div class="field-group">
+                    <label>Age</label>
+                    <select id="treatAge">
+                        <option value="puppy_under4">Puppy &lt; 4 months</option>
+                        <option value="puppy_4to12">Puppy 4–12 months</option>
+                        <option value="adult" selected>Adult (1+ year)</option>
+                        <option value="senior">Senior (7+ years)</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>Activity</label>
+                    <select id="treatActivity">
+                        <option value="1.3">Sedentary / Low</option>
+                        <option value="1.6" selected>Moderate (neutered)</option>
+                        <option value="1.8">Moderate (intact)</option>
+                        <option value="2.0">High / Working</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>Neutered</label>
+                    <select id="treatNeutered">
+                        <option value="1.0" selected>Neutered</option>
+                        <option value="1.0">Intact</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="calcTreats()">🍪 Calculate treat budget</button>
+                <div id="treatResult" class="result-box" style="display:none;margin-top:14px;">
+                    <div class="label">Daily Treat Budget</div>
+                    <div class="value" id="treatBudget">—</div>
+                    <div class="detail" id="treatDetail"></div>
+                </div>
+                <div class="save-prompt" id="treatSavePrompt">
+                    <div class="prompt-text">📝 Save this treat budget to <span id="treatSaveDogName">—</span>'s profile?</div>
+                    <div class="btn-row">
+                        <button class="btn btn-success" onclick="saveTreats()">✅ Yes, save</button>
+                        <button class="btn btn-secondary" onclick="dismissSave('treat')">Skip</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="emoji">📊</span> Recent Treat Budgets</div>
+                <div id="treatHistory"><div class="empty-records">No budgets saved yet.</div></div>
+            </div>
+        </div>
+
+        <!-- 7. True Cost Per Day -->
+        <div class="panel" id="panel-cost">
+            <div class="card">
+                <div class="card-title"><span class="emoji">💰</span> True Cost Per Day</div>
+                <div class="card-sub">Bag price + days the bag lasts = the honest number. Compare two foods.</div>
+                <div style="background:var(--warm-bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;">
+                    <div style="font-weight:700;color:var(--primary-dark);margin-bottom:6px;">Food A</div>
+                    <div class="field-group">
+                        <label>Name <span class="hint">(optional)</span></label>
+                        <input type="text" id="costNameA" placeholder="e.g. Supermarket kibble" />
+                    </div>
+                    <div class="field-group">
+                        <label>Bag price ($)</label>
+                        <input type="number" id="costPriceA" value="45" step="0.01" min="0" />
+                    </div>
+                    <div class="field-group">
+                        <label>Bag size <span class="hint">(kg)</span></label>
+                        <input type="number" id="costSizeA" value="15" step="0.1" min="0.1" />
+                    </div>
+                    <div class="field-group">
+                        <label>Daily portion <span class="hint">(g/day)</span></label>
+                        <input type="number" id="costPortionA" value="300" step="1" min="1" />
+                    </div>
+                </div>
+                <div style="background:var(--warm-bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;">
+                    <div style="font-weight:700;color:var(--primary-dark);margin-bottom:6px;">Food B <span style="font-weight:400;color:var(--text-light);font-size:13px;">(optional — compare)</span></div>
+                    <div class="field-group">
+                        <label>Name <span class="hint">(optional)</span></label>
+                        <input type="text" id="costNameB" placeholder="e.g. Premium kibble" />
+                    </div>
+                    <div class="field-group">
+                        <label>Bag price ($)</label>
+                        <input type="number" id="costPriceB" value="72" step="0.01" min="0" />
+                    </div>
+                    <div class="field-group">
+                        <label>Bag size <span class="hint">(kg)</span></label>
+                        <input type="number" id="costSizeB" value="11.3" step="0.1" min="0.1" />
+                    </div>
+                    <div class="field-group">
+                        <label>Daily portion <span class="hint">(g/day)</span></label>
+                        <input type="number" id="costPortionB" value="230" step="1" min="1" />
+                    </div>
+                </div>
+                <button class="btn" onclick="calcCost()">💰 Calculate cost per day</button>
+                <div id="costResult" class="result-box" style="display:none;margin-top:14px;">
+                    <div class="label">Cost comparison</div>
+                    <div class="detail" id="costDetail"></div>
+                </div>
+                <div class="save-prompt" id="costSavePrompt">
+                    <div class="prompt-text">📝 Save this cost comparison to <span id="costSaveDogName">—</span>'s profile?</div>
+                    <div class="btn-row">
+                        <button class="btn btn-success" onclick="saveCost()">✅ Yes, save</button>
+                        <button class="btn btn-secondary" onclick="dismissSave('cost')">Skip</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="emoji">📊</span> Recent Cost Comparisons</div>
+                <div id="costHistory"><div class="empty-records">No comparisons saved yet.</div></div>
+            </div>
+        </div>
+
+        <!-- 8. Records (all saved data) -->
+        <div class="panel" id="panel-records">
+            <div class="card">
+                <div class="card-title"><span class="emoji">📋</span> All Saved Records</div>
+                <div id="allRecords"><div class="empty-records">No records saved yet. Run a calculator and save the result!</div></div>
+            </div>
+            <div class="card">
+                <button class="btn btn-danger" onclick="clearAllRecords()">🗑️ Clear all records for this dog</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ════════════════════════════════════════════════════════════════
+        //  DATA LAYER
+        // ════════════════════════════════════════════════════════════════
+
+        const STORAGE_KEY = 'dog_health_calculators_data';
+
+        function getDefaultData() {
+            return {
+                dogs: {},
+                activeDogId: null,
+                nextId: 1
+            };
+        }
+
+        function loadData() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    // ensure structure
+                    if (!data.dogs) data.dogs = {};
+                    if (!data.nextId) data.nextId = 1;
+                    return data;
+                }
+            } catch (_) { /* ignore */ }
+            return getDefaultData();
+        }
+
+        function saveData(data) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch (_) { /* ignore */ }
+        }
+
+        function getActiveDog(data) {
+            if (!data.activeDogId) return null;
+            return data.dogs[data.activeDogId] || null;
+        }
+
+        function getDogName(data, id) {
+            const d = data.dogs[id];
+            return d ? d.name || 'Unnamed' : 'Unknown';
+        }
+
+        function ensureDogRecords(data, dogId) {
+            if (!data.dogs[dogId]) return;
+            if (!data.dogs[dogId].records) data.dogs[dogId].records = {};
+            const rec = data.dogs[dogId].records;
+            const types = ['rr', 'calories', 'chocolate', 'flea', 'exercise', 'treats', 'cost'];
+            types.forEach(t => { if (!rec[t]) rec[t] = []; });
+        }
+
+        function pushRecord(data, dogId, type, entry) {
+            if (!data.dogs[dogId]) return;
+            ensureDogRecords(data, dogId);
+            entry.date = new Date().toISOString();
+            data.dogs[dogId].records[type].push(entry);
+            saveData(data);
+        }
+
+        function getRecords(data, dogId, type) {
+            if (!data.dogs[dogId]) return [];
+            ensureDogRecords(data, dogId);
+            return data.dogs[dogId].records[type] || [];
+        }
+
+        function getAllRecords(data, dogId) {
+            if (!data.dogs[dogId]) return [];
+            ensureDogRecords(data, dogId);
+            const rec = data.dogs[dogId].records;
+            const flat = [];
+            const labels = {
+                rr: '💨 RR',
+                calories: '🍽️ Calories',
+                chocolate: '🍫 Chocolate',
+                flea: '🐜 Flea',
+                exercise: '🏃 Exercise',
+                treats: '🍪 Treats',
+                cost: '💰 Cost'
+            };
+            Object.keys(rec).forEach(type => {
+                rec[type].forEach(entry => {
+                    flat.push({ type: labels[type] || type, ...entry });
+                });
+            });
+            flat.sort((a, b) => new Date(b.date) - new Date(a.date));
+            return flat;
+        }
+
+        // ── Dog management ──
+
+        function addDog(name) {
+            const data = loadData();
+            const id = 'dog_' + data.nextId++;
+            data.dogs[id] = { name: name || 'Unnamed', records: {} };
+            data.activeDogId = id;
+            saveData(data);
+            renderAll();
+            return id;
+        }
+
+        function deleteDog(id) {
+            const data = loadData();
+            if (!data.dogs[id]) return;
+            if (!confirm('Delete "' + (data.dogs[id].name || 'Unnamed') + '" and all their records?')) return;
+            delete data.dogs[id];
+            if (data.activeDogId === id) {
+                const keys = Object.keys(data.dogs);
+                data.activeDogId = keys.length ? keys[0] : null;
+            }
+            saveData(data);
+            renderAll();
+        }
+
+        function switchDog(id) {
+            const data = loadData();
+            if (data.dogs[id]) {
+                data.activeDogId = id;
+                saveData(data);
+                renderAll();
+            }
+        }
+
+        // ── Render helpers ──
+
+        let _pendingSave = null; // { type, data }
+
+        function renderAll() {
+            renderDogBar();
+            renderTabs();
+            renderRecords();
+            // Re-run any visible panel's display
+            const active = document.querySelector('.panel.active');
+            if (active) {
+                const id = active.id.replace('panel-', '');
+                // refresh history for that panel
+                renderHistory(id);
+            }
+            // update save prompt dog names
+            document.querySelectorAll('.save-prompt [id$="SaveDogName"]').forEach(el => {
+                const data = loadData();
+                const dog = getActiveDog(data);
+                el.textContent = dog ? dog.name || 'Unnamed' : '—';
+            });
+        }
+
+        function renderDogBar() {
+            const data = loadData();
+            const bar = document.getElementById('dogBar');
+            const activeId = data.activeDogId;
+            let html = '';
+            Object.keys(data.dogs).forEach(id => {
+                const d = data.dogs[id];
+                const active = id === activeId ? 'active' : '';
+                html += `<span class="dog-chip ${active}">
+                            🐕 ${d.name || 'Unnamed'}
+                            <span class="del" onclick="event.stopPropagation();deleteDog('${id}')">✕</span>
+                         </span>`;
+            });
+            html += `<span class="dog-chip add" onclick="promptAddDog()">＋ Add Dog</span>`;
+            bar.innerHTML = html;
+            // click handlers for switching
+            bar.querySelectorAll('.dog-chip:not(.add)').forEach(el => {
+                const id = el.textContent.replace(/✕$/, '').trim();
+                // find the actual id from data
+                const data2 = loadData();
+                Object.keys(data2.dogs).forEach(did => {
+                    if (el.textContent.includes(data2.dogs[did].name || 'Unnamed')) {
+                        el.onclick = () => switchDog(did);
+                    }
+                });
+            });
+        }
+
+        function promptAddDog() {
+            const name = prompt('Enter your dog\'s name:');
+            if (name !== null && name.trim()) {
+                addDog(name.trim());
+            } else if (name !== null) {
+                addDog('Unnamed');
+            }
+        }
+
+        function renderTabs() {
+            // tabs are static, just ensure active class
+            const activePanel = document.querySelector('.panel.active');
+            if (activePanel) {
+                const id = activePanel.id.replace('panel-', '');
+                document.querySelectorAll('#tabNav button').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.tab === id);
+                });
+            }
+        }
+
+        // ── Tab switching ──
+
+        document.getElementById('tabNav').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const tab = btn.dataset.tab;
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('#tabNav button').forEach(b => b.classList.remove('active'));
+            document.getElementById('panel-' + tab).classList.add('active');
+            btn.classList.add('active');
+            renderHistory(tab);
+        });
+
+        // ── History render ──
+
+        function renderHistory(type) {
+            const data = loadData();
+            const dog = getActiveDog(data);
+            if (!dog) {
+                document.getElementById(type + 'History').innerHTML =
+                    '<div class="empty-records">No dog selected. Add a dog first!</div>';
+                return;
+            }
+            const records = getRecords(data, data.activeDogId, type);
+            const container = document.getElementById(type + 'History');
+            if (!records.length) {
+                container.innerHTML = '<div class="empty-records">No records saved yet.</div>';
+                return;
+            }
+            let html = '';
+            records.slice().reverse().forEach(r => {
+                const dateStr = new Date(r.date).toLocaleDateString() + ' ' +
+                    new Date(r.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                html += `<div class="record-item">
+                            <div class="date">${dateStr}</div>
+                            <div class="data">${formatRecord(type, r)}</div>
+                         </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function formatRecord(type, r) {
+            switch (type) {
+                case 'rr':
+                    return `💨 <strong>${r.bpm}</strong> BPM (${r.window}s window, ${r.taps} taps) — ${r.status || 'normal'}`;
+                case 'calories':
+                    return `🍽️ <strong>${Math.round(r.mer)}</strong> kcal/day, ${r.meals} meal${r.meals>1?'s':''}, ~${Math.round(r.ozPerMeal||0)} oz/meal`;
+                case 'chocolate':
+                    return `🍫 <strong>${r.dose}</strong> mg/kg — ${r.risk} (${r.chocType}, ${r.amount}g)`;
+                case 'flea':
+                    return `🐜 ${r.medication || 'Medication'} — next dose: ${r.nextDates ? r.nextDates[0] : '—'}`;
+                case 'exercise':
+                    return `🏃 ${r.plan} — ${r.detail || ''}`;
+                case 'treats':
+                    return `🍪 <strong>${Math.round(r.budget)}</strong> kcal/day treat budget (${Math.round(r.pctOfDaily)}% of daily)`;
+                case 'cost':
+                    return `💰 ${r.foodA || 'Food A'}: $${r.costA?.toFixed(2)||'—'}/day ${r.foodB ? 'vs '+r.foodB+': $'+r.costB?.toFixed(2) : ''}`;
+                default:
+                    return JSON.stringify(r);
+            }
+        }
+
+        function renderRecords() {
+            const data = loadData();
+            const dog = getActiveDog(data);
+            const container = document.getElementById('allRecords');
+            if (!dog) {
+                container.innerHTML = '<div class="empty-records">No dog selected. Add a dog first!</div>';
+                return;
+            }
+            const all = getAllRecords(data, data.activeDogId);
+            if (!all.length) {
+                container.innerHTML = '<div class="empty-records">No records saved yet. Run a calculator and save the result!</div>';
+                return;
+            }
+            let html = '';
+            all.forEach(r => {
+                const dateStr = new Date(r.date).toLocaleDateString() + ' ' +
+                    new Date(r.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const label = r.type || '📋';
+                const summary = formatRecordFromEntry(r);
+                html += `<div class="record-item">
+                            <div class="date">${dateStr} ${label}</div>
+                            <div class="data">${summary}</div>
+                         </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function formatRecordFromEntry(r) {
+            // generic formatter for the all-records view
+            if (r.bpm) return `💨 <strong>${r.bpm}</strong> BPM`;
+            if (r.mer) return `🍽️ <strong>${Math.round(r.mer)}</strong> kcal/day`;
+            if (r.dose) return `🍫 <strong>${r.dose}</strong> mg/kg — ${r.risk}`;
+            if (r.nextDates) return `🐜 next: ${r.nextDates[0]}`;
+            if (r.plan) return `🏃 ${r.plan}`;
+            if (r.budget) return `🍪 <strong>${Math.round(r.budget)}</strong> kcal`;
+            if (r.costA) return `💰 $${r.costA.toFixed(2)}/day`;
+            return '📋 ' + JSON.stringify(r).slice(0, 60);
+        }
+
+        function clearAllRecords() {
+            const data = loadData();
+            const dog = getActiveDog(data);
+            if (!dog) return;
+            if (!confirm('Delete ALL records for "' + (dog.name || 'Unnamed') + '"?')) return;
+            dog.records = {};
+            saveData(data);
+            renderAll();
+        }
+
+        // ── Save prompt helpers ──
+
+        function showSavePrompt(type) {
+            const el = document.getElementById(type + 'SavePrompt');
+            if (el) el.classList.add('show');
+        }
+
+        function dismissSave(type) {
+            const el = document.getElementById(type + 'SavePrompt');
+            if (el) el.classList.remove('show');
+            _pendingSave = null;
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        //  1. RESPIRATORY RATE
+        // ════════════════════════════════════════════════════════════════
+
+        let rrState = { taps: 0, running: false, timer: null, seconds: 0, window: 30, bpm: null };
+
+        document.getElementById('rrWindow').addEventListener('change', function() {
+            rrState.window = parseInt(this.value) || 30;
+            resetRR();
+        });
+
+        document.getElementById('rrTapBtn').addEventListener('click', function() {
+            if (!rrState.running) {
+                startRR();
+                return;
+            }
+            rrState.taps++;
+            document.getElementById('rrTaps').textContent = 'Taps: ' + rrState.taps;
+            // haptic feedback if available
+            if (navigator.vibrate) navigator.vibrate(10);
+        });
+
+        function startRR() {
+            resetRR();
+            rrState.running = true;
+            rrState.seconds = 0;
+            rrState.taps = 0;
+            const btn = document.getElementById('rrTapBtn');
+            btn.textContent = '👆 Tap for each breath';
+            btn.classList.add('timer-active');
+            document.getElementById('rrTaps').textContent = 'Taps: 0';
+            document.getElementById('rrTimer').textContent = '⏱️ 0s';
+            document.getElementById('rrResult').style.display = 'none';
+            document.getElementById('rrStatus').textContent = '⏳ Counting… tap each breath.';
+            rrState.timer = setInterval(() => {
+                rrState.seconds++;
+                document.getElementById('rrTimer').textContent = '⏱️ ' + rrState.seconds + 's';
+                if (rrState.seconds >= rrState.window) {
+                    stopRR();
+                }
+            }, 1000);
+        }
+
+        function stopRR() {
+            rrState.running = false;
+            if (rrState.timer) { clearInterval(rrState.timer);
+                rrState.timer = null; }
+            const btn = document.getElementById('rrTapBtn');
+            btn.classList.remove('timer-active');
+            btn.textContent = '👆 Tap for each breath';
+            const taps = rrState.taps;
+            const windowSec = rrState.window;
+            let bpm = 0;
+            let status = 'normal';
+            let statusText = 'Normal sleeping rate.';
+            if (taps > 0) {
+                bpm = Math.round((taps / windowSec) * 60);
+                if (bpm < 30) status = 'normal';
+                else if (bpm < 40) { status = 'borderline';
+                    statusText = 'Borderline — re-measure in a cool, quiet room. If sustained, contact your vet.'; } else { status =
+                        'high';
+                    statusText = '⚠️ Abnormal sleeping rate — contact your vet, especially if your dog has a heart condition.'; }
+            }
+            rrState.bpm = bpm;
+            document.getElementById('rrStatus').textContent = taps === 0 ? 'No taps recorded. Try again.' : '✅ Done!';
+            if (taps > 0) {
+                const result = document.getElementById('rrResult');
+                result.style.display = 'block';
+                document.getElementById('rrResultBpm').textContent = bpm + ' BPM';
+                document.getElementById('rrResultDetail').innerHTML =
+                    `${taps} taps in ${windowSec}s &bull; ${statusText}` +
+                    (status === 'normal' ? ' ✅ Healthy' : '') +
+                    (status === 'borderline' ? ' ⚠️ Watch' : '') +
+                    (status === 'high' ? ' 🚨 Alert' : '');
+                // Store for save
+                _pendingSave = {
+                    type: 'rr',
+                    data: { bpm, taps, window: windowSec, status, statusText }
+                };
+                showSavePrompt('rr');
+            } else {
+                dismissSave('rr');
+            }
+            document.getElementById('rrTaps').textContent = 'Taps: ' + taps;
+        }
+
+        function resetRR() {
+            rrState.running = false;
+            if (rrState.timer) { clearInterval(rrState.timer);
+                rrState.timer = null; }
+            rrState.taps = 0;
+            rrState.seconds = 0;
+            rrState.bpm = null;
+            const btn = document.getElementById('rrTapBtn');
+            btn.classList.remove('timer-active');
+            btn.textContent = '👆 Tap for each breath';
+            document.getElementById('rrTaps').textContent = 'Taps: 0';
+            document.getElementById('rrTimer').textContent = '⏱️ 0s';
+            document.getElementById('rrStatus').textContent = '';
+            document.getElementById('rrResult').style.display = 'none';
+            dismissSave('rr');
+            _pendingSave = null;
+        }
+
+        function saveRR() {
+            const data = loadData();
+            const dog = getActiveDog(data);
+            if (!dog) { alert('No dog selected.'); return; }
+            if (!_pendingSave || _pendingSave.type !== 'rr') return;
+            pushRecord(data, data.activeDogId, 'rr', _pendingSave.data);
+            dismissSave('rr');
+            _pendingSave = null;
+            renderAll();
+            renderHistory('rr');
+            // show a quick feedback
+            const status = document.getElementById('rrStatus');
+            status.textContent = '✅ Saved to ' + (dog.name || 'Unnamed') + '\'s profile!';
+            setTimeout(() => { status.textContent = ''; }, 3000);
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        //  2. CALORIES
+        // ════════════════════════════════════════════════════════════════
+
+        function calcCalories() {
+            const weight = parseFloat(document.getElementById('calWeight').value) || 25;
+            const age = document.getElementById('calAge').value;
+            const activity = parseFloat(document.getElementById('calActivity').value) || 1.6;
+            const condition = parseFloat(document.getElementById('calCondition').value) || 1.0;
+            const neutered = parseFloat(document.getElementById('calNeutered').value) || 1.0;
+            const meals = parseInt(document.getElementById('calMeals').value) || 2;
+            const treatPct = parseFloat(document.getElementById('calTreats').value) || 0;
+
+            let ageFactor = 1.0;
+            if (age === 'puppy_under4') ageFactor = 3.0;
+            else if (age === 'puppy_4to12') ageFactor = 2.0;
+            else if (age === 'senior') ageFactor = 0.9;
+
+            const rer = 70 * Math.pow(weight, 0.75);
+            let mer = rer * activity * condition * neutered * ageFactor;
+            const treatShare = treatPct / 100;
+            const foodCalories = mer * (1 - treatShare);
+            const ozPerDay = foodCalories / 42; // approximate density
+            const ozPerMeal = ozPerDay / meals;
+
+            const result = {
+                weight,
+                age,
+                activity,
+                condition,
+                neutered,
+                meals,
+                treatPct,
+                rer: Math.round(rer),
+                mer: Math.round(mer),
+                foodCalories: Math.round(foodCalories),
+                ozPerDay: Math.round(ozPerDay * 10) / 10,
+                ozPerMeal: Math.round(ozPerMeal * 10) / 10,
+                treatKcal: Math.round(mer * treatShare)
+            };
+
+            document.getElementById('calResult').style.display = 'block';
+            document.getElementById('calMer').textContent = Math.round(mer) + ' kcal/day';
+            document.getElementById('calDetail').innerHTML =
+                `RER: <strong>${Math.round(rer)}</strong> kcal &bull; ` +
+                `Food: <strong>${Math.round(foodCalories)}</strong> kcal/day &bull; ` +
+                `~<strong>${result.ozPerDay}</strong> oz/day (${result.ozPerMeal} oz/meal) &bull; ` +
+                `Treats: <strong>${result.treatKcal}</strong> kcal/day`;
+
+            _pendingSave = { type: 'calories', data: result };
+            showSavePrompt('cal');
+        }
+
+        function saveCalories() {
+            const data = loadData();
+            const dog = getActiveDog(data);
+            if (!dog) { alert('No dog selected.'); return; }
+            if (!_pendingSave || _pendingSave.type !== 'calories') return;
+            pushRecord(data, data.activeDogId, 'calories', _pendingSave.data);
+            dismissSave('cal');
+            _pendingSave = null;
+            renderAll();
+            renderHistory('calories');
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        //  3. CHOCOLATE TOXICITY
+        // ════════════════════════════════════════════════════════════════
+
+        function calcChocolate() {
+            const weight = parseFloat(document.getElementById('chocWeight').value) || 25;
+            const chocType = parseInt(document.getElementById('chocType').value) || 150;
+            const amount = parseFloat(document.getElementById('chocAmount').value) || 0;
+
+            if (weight <= 0 || amount <= 0) {
+                alert('Please enter a valid weight and amount.');
+                return;
+            }
+
+            const theobromineMg = amount * (chocType / 1000);
+            const dose = theobromineMg / weight;
+            let risk = 'Low';
+            let color = 'badge-safe';
+            let advice = 'No immediate concern. Monitor for any unusual behavior.';
+            if (dose > 200) { risk = 'Extreme';
+                color = 'badge-danger';
+                advice = '🚨 EMERGENCY — call your vet or poison control immediately!'; } else if (dose > 100) { risk = 'High';
+                color = 'badge-danger';
+                advice = '⚠️ High risk — contact your vet right away.'; } else if (dose > 40) { risk = 'Moderate';
+                color = 'badge-warn';
+                advice = '⚠️ Moderate risk — call your vet for guidance.'; } else if (dose > 10) { risk = 'Mild';
+                color = 'badge-warn';
+                advice = 'Watch for symptoms like vomiting, diarrhea, restlessness.'; } else { risk = 'Low';
+                color = 'badge-safe';
+                advice = 'Likely safe, but monitor your dog just in case.'; }
+
+            const result = {
+                weight,
+                chocType,
+                amount,
+                dose: Math.round(dose * 100) / 100,
+                risk,
+                color,
+                advice,
+                chocLabel: document.getElementById('chocType').selectedOptions[0].text
+            };
+
+            document.getElementById('chocResult').style.display = 'block';
+            document.getElementById('chocDose').textContent = result.dose + ' mg/kg';
+            document.getElementById('chocDetail').innerHTML =
+                `<span class="badge ${color}">${risk}</span> &bull; ${amount}g ${result.chocLabel} &bull; ${advice}`;
+
+            _pendingSave = { type: 'chocolate', data: result };
+            showSavePrompt('choc');
+        }
+
+        function saveChocolate() {
+            const data = loadData();
+            const dog = getActiveDog(data);
+            if (!dog) { alert('No dog selected.'); return; }
+            if (!_pendingSave || _pendingSave.type !== 'chocolate') return;
+            pushRecord(data, data.activeDogId, 'chocolate', _pendingSave.data);
+            dismissSave('choc');
+            _pendingSave = null;
+            renderAll();
+            renderHistory('chocolate');
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        //  4. FLEA / TICK SCHEDULE
+        // ════════════════════════════════════════════════════════════════
+
+        function calcFlea() {
+            const med = document.getElementById('fleaMed').value.trim() || 'Medication';
+            const lastDate = document.getElementById('fleaLastDate').value;
+            const freq = parseInt(document.getElementById('fleaFreq').value) || 30;
+
+            if (!lastDate) {
+                alert('Please select the last dose date.');
+                return;
+            }
+
+            const dates = [];
+            let d = new Date(lastDate + 'T00:00:00');
+            for (let i = 0; i < 6; i++) {
+                d.setDate(d.getDate() + freq);
+                dates.push(d.toISOString().split('T')[0]);
+            }
+
+            const result = {
+                medication: med,
+                lastDate,
+                frequency: freq,
+                nextDates: dates
+            };
+
+            const container = document.getElementById('fleaScheduleList');
+            container.innerHTML = dates.map((dt, i) =>
+                `<div class="item"><span class="num">#${i+1}</span><span>${dt}</span></div>`
+            ).join('');
+
+            document.getElementById('fleaResult').style.display = 'block';
+            _pendingSave = { type: 'flea', data: result };
+            showSavePrompt('flea');
+        }
+
+        function saveFlea() {
+            const data = loadData();
+            const dog = getActiveDog(data);
+            if (!dog) { alert('No dog selected.'); return; }
+            if (!_pendingSave || _pendingSave.type !== 'flea') return;
+            pushRecord(data, data.activeDogId, 'flea', _pendingSave.data);
+            dismissSave('flea');
+            _pendingSave = null;
+            renderAll();
+            renderHistory('flea');
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        //  5. EXERCISE
+        // ════════════════════════════════════════════════════════════════
+
+        function calcExercise() {
+            const breed = document.getElementById('exBreed').value;
+            const age = document.getElementById('exAge').value;
+            const weight = parseFloat(document.getElementById('exWeight').value) || 25;
+            const health = document.getElementById('exHealth').value;
+
+            const breedMap = {
+                toy: { walk: 20, play: 10 },
+                small: { walk: 30, play: 15 },
+                medium: { walk: 45, play: 20 },
+                large: { walk: 60, play: 25 },
+                giant: { walk: 50, play: 15 }
+            };
+            let base = breedMap[breed] || breedMap.medium;
+            let walk = base.walk;
+            let play = base.play;
+
+            if (age === 'puppy') { walk = Math.round(walk * 0.6);
+                play = Math.round(play * 0.5); } else if (age === 'senior') { walk = Math.round(walk * 0.7);
+                play = Math.round(play * 0.5); }
+
+            if (health === 'brachy') { walk = Math.round(walk * 0.6);
+                play = Math.round(play * 0.5); } else if (health === 'cardiac') { walk = Math.round(walk * 0.4);
+                play = Math.round(play * 0.3); } else if (health === 'ortho') { walk = Math.round(walk * 0.5);
+                play = Math.round(play * 0.4); }
+
+            const plan = `${walk} min walk + ${play} min play`;
+            let detail = `For a ${weight}kg ${age} dog, ${health.replace('_',' ')}. `;
+            if (health !== 'healthy') detail += '⚠️ Adjust to your dog\'s tolerance and consult your vet.';
+
+            const result = { breed, age, weight, health, walk, play, plan, detail };
+
+            document.getElementById('exResult').style.display = 'block';
+            document.getElementById('exPlan').textContent = plan;
+            document.getElementById('exDetail').textContent = detail;
+
+            _pendingSave = { type: 'exercise', data: result };
+            showSavePrompt('ex');
+        }
+
+        function saveExercise() {
+            const data = loadData();
+            const dog = getActiveDog(data);
+            if (!dog) { alert('No dog selected.'); return; }
+            if (!_pendingSave || _pendingSave.type !== 'exercise') return;
+            pushRecord(data, data.activeDogId, 'exercise', _pendingSave.data);
+            dismissSave('ex');
+            _pendingSave = null;
+            renderAll();
+            renderHistory('exercise');
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        //  6. TREAT ALLOWANCE
+        // ════════════════════════════════════════════════════════════════
+
+        function calcTreats() {
+            const weight = parseFloat(document.getElementById('treatWeight').value) || 25;
+            const age = document.getElementById('treatAge').value;
+            const activity = parseFloat(document.getElementById('treatActivity').value) || 1.6;
+            const neutered = parseFloat(document.getElementById('treatNeutered').value) || 1.0;
+
+            let ageFactor = 1.0;
+            if (age === 'puppy_under4') ageFactor = 3.0;
+            else if (age === 'puppy_4to12') ageFactor = 2.0;
+            else if (age === 'senior') ageFactor = 0.9;
+
+            const rer = 70 * Math.pow(weight, 0.75);
+            const mer = rer * activity * neutered * ageFactor;
+            const budget = Math.round(mer * 0.10);
+            const pctOfDaily = 10;
+
+            // examples of what the budget looks like
+            const examples = [];
+            if (budget >= 5) examples.push(`${Math.round(budget/5)} baby carrots (~5 kcal each)`);
+            if (budget >= 10) examples.push(`${Math.round(budget/10)} small training treats (~10 kcal each)`);
+            if (budget >= 20) examples.push(`${Math.round(budget/20)} medium biscuits (~20 kcal each)`);
+            if (budget >= 80) examples.push(`${Math.round(budget/80)} dental chews (~80 kcal each)`);
+            if (examples.length === 0) examples.push('A tiny pinch of treats');
+
+            const result = {
+                weight,
+                age,
+                activity,
+                neutered,
+                rer: Math.round(rer),
+                mer: Math.round(mer),
+                budget,
+                pctOfDaily,
+                examples: examples.join(' · ')
+            };
+
+            document.getElementById('treatResult').style.display = 'block';
+            document.getElementById('treatBudget').textContent = budget + ' kcal/day';
+            document.getElementById('treatDetail').innerHTML =
+                `That's <strong>${pctOfDaily}%</strong> of daily calories (${Math.round(mer)} kcal/day) &bull; ` +
+                `Looks like: ${result.examples}`;
+
+            _pendingSave = { type: 'treats', data: result };
+            showSavePrompt('treat');
+        }
+
+        function saveTreats() {
+            const data = loadData();
+            const dog = getActiveDog(data);
+            if (!dog) { alert('No dog selected.'); return; }
+            if (!_pendingSave || _pendingSave.type !== 'treats') return;
+            pushRecord(data, data.activeDogId, 'treats', _pendingSave.data);
+            dismissSave('treat');
+            _pendingSave = null;
+            renderAll();
+            renderHistory('treats');
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        //  7. TRUE COST PER DAY
+        // ════════════════════════════════════════════════════════════════
+
+        function calcCost() {
+            const nameA = document.getElementById('costNameA').value.trim() || 'Food A';
+            const priceA = parseFloat(document.getElementById('costPriceA').value) || 0;
+            const sizeA = parseFloat(document.getElementById('costSizeA').value) || 1;
+            const portionA = parseFloat(document.getElementById('costPortionA').value) || 100;
+
+            const nameB = document.getElementById('costNameB').value.trim() || 'Food B';
+            const priceB = parseFloat(document.getElementById('costPriceB').value) || 0;
+            const sizeB = parseFloat(document.getElementById('costSizeB').value) || 1;
+            const portionB = parseFloat(document.getElementById('costPortionB').value) || 100;
+
+            if (priceA <= 0 || sizeA <= 0 || portionA <= 0) {
+                alert('Please fill in Food A completely.');
+                return;
+            }
+
+            const daysA = sizeA * 1000 / portionA;
+            const costA = priceA / daysA;
+            const monthA = costA * 30;
+            const yearA = costA * 365;
+
+            let result = {
+                foodA: nameA,
+                foodB: nameB,
+                priceA,
+                sizeA,
+                portionA,
+                daysA: Math.round(daysA * 10) / 10,
+                costA: Math.round(costA * 100) / 100,
+                monthA: Math.round(monthA * 100) / 100,
+                yearA: Math.round(yearA * 100) / 100,
+            };
+
+            let detailHtml =
+                `<strong>${nameA}</strong>: $${result.costA}/day · $${result.monthA}/mo · $${result.yearA}/yr · ${result.daysA} days/bag`;
+
+            if (priceB > 0 && sizeB > 0 && portionB > 0) {
+                const daysB = sizeB * 1000 / portionB;
+                const costB = priceB / daysB;
+                const monthB = costB * 30;
+                const yearB = costB * 365;
+                result.costB = Math.round(costB * 100) / 100;
+                result.monthB = Math.round(monthB * 100) / 100;
+                result.yearB = Math.round(yearB * 100) / 100;
+                result.daysB = Math.round(daysB * 10) / 10;
+                result.priceB = priceB;
+                result.sizeB = sizeB;
+                result.portionB = portionB;
+
+                const cheaper = costA < costB ? nameA : nameB;
+                const diff = Math.abs(costA - costB);
+                detailHtml +=
+                    `<br><strong>${nameB}</strong>: $${result.costB}/day · $${result.monthB}/mo · $${result.yearB}/yr · ${result.daysB} days/bag`;
+                detailHtml += `<br>🏆 <strong>${cheaper}</strong> is cheaper by <strong>$${diff.toFixed(2)}</strong> per day`;
+            }
+
+            document.getElementById('costResult').style.display = 'block';
+            document.getElementById('costDetail').innerHTML = detailHtml;
+
+            _pendingSave = { type: 'cost', data: result };
+            showSavePrompt('cost');
+        }
+
+        function saveCost() {
+            const data = loadData();
+            const dog = getActiveDog(data);
+            if (!dog) { alert('No dog selected.'); return; }
+            if (!_pendingSave || _pendingSave.type !== 'cost') return;
+            pushRecord(data, data.activeDogId, 'cost', _pendingSave.data);
+            dismissSave('cost');
+            _pendingSave = null;
+            renderAll();
+            renderHistory('cost');
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        //  BOOT
+        // ════════════════════════════════════════════════════════════════
+
+        // Ensure at least one dog exists
+        (function boot() {
+            const data = loadData();
+            if (Object.keys(data.dogs).length === 0) {
+                const id = 'dog_' + data.nextId++;
+                data.dogs[id] = { name: 'Buddy', records: {} };
+                data.activeDogId = id;
+                saveData(data);
+            }
+            renderAll();
+            // set default date for flea
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('fleaLastDate').value = today;
+            // auto-show first panel's history
+            renderHistory('rr');
+        })();
+    </script>
+</body>
+</html>

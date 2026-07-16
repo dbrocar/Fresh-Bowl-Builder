@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "FreshBowl — Dog Nutrition & Health"
+version = "1.0.0"
+id = "artifacts/freshbowl"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19464
+
+[services.development]
+run = "pnpm --filter @workspace/freshbowl run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/freshbowl", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/freshbowl/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19464"
+BASE_PATH = "/"

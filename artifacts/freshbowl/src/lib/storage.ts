@@ -171,6 +171,27 @@ export function deleteDog(id: string): void {
   saveAppData(data);
 }
 
+export function saveCalculationForActiveDog(
+  type: CalcType,
+  summary: string,
+  data: Record<string, unknown>
+): SavedCalculation | null {
+  const appData = loadAppData();
+  if (!appData.activeDogId) return null;
+  const dogIndex = appData.dogs.findIndex(d => d.id === appData.activeDogId);
+  if (dogIndex === -1) return null;
+  const calc: SavedCalculation = {
+    id: crypto.randomUUID(),
+    type,
+    date: new Date().toISOString(),
+    summary,
+    data
+  };
+  appData.dogs[dogIndex].savedCalculations = [calc, ...(appData.dogs[dogIndex].savedCalculations || [])].slice(0, 50);
+  saveAppData(appData);
+  return calc;
+}
+
 export function getDaysDiff(date1: string, date2: string): number {
   const d1 = new Date(date1);
   const d2 = new Date(date2);

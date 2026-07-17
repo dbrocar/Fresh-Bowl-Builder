@@ -290,6 +290,15 @@ export function totalWalkStats(dogId: string, days = 30): { count: number; miles
   };
 }
 
+export function allTimeWalkStats(dogId: string): { count: number; miles: number; minutes: number } {
+  const walks = getWalks(dogId);
+  return {
+    count: walks.length,
+    miles: Math.round(walks.reduce((s, w) => s + w.distanceMiles, 0) * 100) / 100,
+    minutes: Math.round(walks.reduce((s, w) => s + w.durationSec, 0) / 60),
+  };
+}
+
 export function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8; // Earth radius in miles
   const dLat = (lat2 - lat1) * Math.PI / 180;

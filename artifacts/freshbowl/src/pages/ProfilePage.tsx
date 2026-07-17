@@ -25,6 +25,7 @@ import {
   addTraining, removeTraining, getTraining, trainingStats,
   addSharedAccess, getSharedAccesses, removeSharedAccess
 } from "@/lib/care";
+import { formatWeight, loadSettings } from "@/lib/settings";
 
 const PROTEINS = ["Chicken", "Turkey", "Duck", "Beef", "Lamb", "Pork", "Salmon", "Sardines", "Venison", "Rabbit"];
 const ORGANS = ["Chicken Liver", "Beef Liver", "Chicken Heart", "Beef Heart", "Kidney", "Spleen"];
@@ -211,16 +212,18 @@ export function ProfilePage({ setView }: { setView: (v: string) => void }) {
 
   // ── Weight Tracking ──
   function WeightPanel() {
-    const [kg, setKg] = useState("");
+    const unit = loadSettings().weightUnit;
+    const [weightInput, setWeightInput] = useState("");
     const [log, setLog] = useState(getWeightLog());
     const reload = () => setLog(getWeightLog());
 
     const add = () => {
-      const w = parseFloat(kg);
+      const w = parseFloat(weightInput);
       if (!w || w <= 0) return;
-      addWeightEntry(w);
+      const kg = unit === "lb" ? w / 2.20462 : w;
+      addWeightEntry(kg);
       reload();
-      setKg("");
+      setWeightInput("");
       toast({ title: "Weight logged" });
     };
 
@@ -231,7 +234,7 @@ export function ProfilePage({ setView }: { setView: (v: string) => void }) {
     return (
       <div className="space-y-4">
         <div className="flex gap-2">
-          <Input type="number" placeholder="kg" value={kg} onChange={e => setKg(e.target.value)} className="flex-1" />
+          <Input type="number" placeholder={unit} value={weightInput} onChange={e => setWeightInput(e.target.value)} className="flex-1" />
           <Button onClick={add}><Weight className="w-4 h-4 mr-2" /> Log</Button>
         </div>
         {log.length === 0 && <div className="text-sm text-muted-foreground text-center py-4">No weights logged yet.</div>}
@@ -240,7 +243,7 @@ export function ProfilePage({ setView }: { setView: (v: string) => void }) {
             {log.slice().reverse().map(e => (
               <div key={e.id} className="flex justify-between items-center bg-muted/40 rounded-lg px-3 py-2 text-sm">
                 <span>{new Date(e.date).toLocaleDateString()}</span>
-                <span className="font-bold">{e.kg} kg ({(e.kg * 2.205).toFixed(1)} lbs)</span>
+                <span className="font-bold">{formatWeight(e.kg)}</span>
                 <button onClick={() => remove(e.id)} className="text-destructive text-xs">Remove</button>
               </div>
             ))}

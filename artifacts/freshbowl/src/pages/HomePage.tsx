@@ -3,12 +3,13 @@ import { useAppData } from "@/hooks/use-app-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Sunrise, Moon, CheckCircle2, Circle, ChevronRight, Flame, Info } from "lucide-react";
+import { Sunrise, Moon, CheckCircle2, Circle, ChevronRight, Flame, Info, Footprints } from "lucide-react";
 import { getDaySchedule, toDateKey, today, formatDateLong, PROTEIN_CATALOG, STARCH_OPTIONS, VEG_OPTIONS, ORGAN_OPTIONS, type SlotMeal } from "@/lib/rotation";
 import { isFed, markFed, SUPP_NAMES, isSuppChecked, toggleSupp, getSwap, setSwap, getEffectiveMeal, type SwapType } from "@/lib/feedlog";
 import { calculateMER } from "@/lib/nutrition";
 import { computeMealAmounts, DEFAULT_AMOUNTS } from "@/lib/foods";
-import { totalWalkStats } from "@/lib/care";
+import { totalWalkStats, allTimeWalkStats } from "@/lib/care";
+import { formatWeight, formatDistance } from "@/lib/settings";
 
 const SWAP_OPTIONS: Record<SwapType, string[]> = {
   protein: PROTEIN_CATALOG.map(p => p.name),
@@ -253,6 +254,7 @@ export function HomePage({ setView }: { setView: (v: string) => void }) {
     : 0;
   const amounts = mer > 0 ? computeMealAmounts(mer) : DEFAULT_AMOUNTS;
   const walkStats = activeDog ? totalWalkStats(activeDog.id, 7) : { count: 0, miles: 0, minutes: 0 };
+  const allTimeWalks = activeDog ? allTimeWalkStats(activeDog.id) : { count: 0, miles: 0, minutes: 0 };
 
   if (!activeDog) {
     return (
@@ -300,7 +302,7 @@ export function HomePage({ setView }: { setView: (v: string) => void }) {
             Hi, {activeDog.name} 🐾
           </h2>
           <p className="text-xs font-medium text-muted-foreground mt-0.5">
-            {(activeDog.weightKg * 2.205).toFixed(0)} lbs · {activeDog.activityLevel} activity
+            {formatWeight(activeDog.weightKg)} · {activeDog.activityLevel} activity
           </p>
         </div>
         <div className="text-right">
@@ -338,6 +340,27 @@ export function HomePage({ setView }: { setView: (v: string) => void }) {
           <div className="text-[10px] text-muted-foreground font-medium">walks</div>
         </div>
       </div>
+
+      {allTimeWalks.count > 0 && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-xl p-4 border border-blue-100 dark:border-blue-900/50 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <Footprints className="w-4 h-4 text-blue-500" /> {activeDog.name}'s Walk Totals
+            </div>
+            <span className="text-[10px] text-muted-foreground font-medium">all time</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white/60 dark:bg-white/5 rounded-lg p-2.5 text-center">
+              <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatDistance(allTimeWalks.miles)}</div>
+              <div className="text-[10px] text-muted-foreground font-medium">total distance</div>
+            </div>
+            <div className="bg-white/60 dark:bg-white/5 rounded-lg p-2.5 text-center">
+              <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{allTimeWalks.minutes}</div>
+              <div className="text-[10px] text-muted-foreground font-medium">total minutes</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <MealCard
         key={`am-${tick}`}

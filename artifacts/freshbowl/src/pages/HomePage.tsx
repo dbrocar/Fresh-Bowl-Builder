@@ -3,14 +3,13 @@ import { useAppData } from "@/hooks/use-app-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Sunrise, Moon, CheckCircle2, Circle, RefreshCw, ChevronRight, Flame, Beef, Carrot } from "lucide-react";
-import { getScheduledMeal, getEffectiveMeal as getEffectiveMealFromRotation, getDaySchedule, toDateKey, today, formatDateLong, PROTEIN_CATALOG, STARCH_OPTIONS, VEG_OPTIONS, ORGAN_OPTIONS, type SlotMeal, type DayAbbrev } from "@/lib/rotation";
-import { isFed, markFed, SUPP_NAMES, isSuppChecked, toggleSupp, getSwap, setSwap, type SwapType } from "@/lib/feedlog";
-import { getEffectiveMeal } from "@/lib/feedlog";
+import { Sunrise, Moon, CheckCircle2, Circle, ChevronRight, Flame, Info } from "lucide-react";
+import { getDaySchedule, toDateKey, today, formatDateLong, PROTEIN_CATALOG, STARCH_OPTIONS, VEG_OPTIONS, ORGAN_OPTIONS, type SlotMeal } from "@/lib/rotation";
+import { isFed, markFed, SUPP_NAMES, isSuppChecked, toggleSupp, getSwap, setSwap, getEffectiveMeal, type SwapType } from "@/lib/feedlog";
 import { calculateMER } from "@/lib/nutrition";
 import { computeMealAmounts, DEFAULT_AMOUNTS } from "@/lib/foods";
+import { totalWalkStats } from "@/lib/care";
 
-// ── Swap options per slot type ──
 const SWAP_OPTIONS: Record<SwapType, string[]> = {
   protein: PROTEIN_CATALOG.map(p => p.name),
   starch: STARCH_OPTIONS,
@@ -18,7 +17,6 @@ const SWAP_OPTIONS: Record<SwapType, string[]> = {
   organ: ORGAN_OPTIONS,
 };
 
-// ── Slot config ──
 const SLOT_CONFIG = [
   { type: "protein" as SwapType, emoji: "🥩", label: "Protein" },
   { type: "starch" as SwapType, emoji: "🌾", label: "Starch" },
@@ -127,7 +125,6 @@ function MealCard({ ds, slot, meal, amounts, fed, onFedChange, onRefresh }: Meal
         "border-none shadow-md transition-all duration-300",
         fed ? "shadow-green-500/10 ring-1 ring-green-500/20" : "bg-card"
       )}>
-        {/* Header */}
         <div className={cn(
           "px-4 py-2.5 flex justify-between items-center border-b",
           isAM ? "bg-amber-500/10 border-amber-500/10" : "bg-indigo-500/10 border-indigo-500/10"
@@ -155,7 +152,6 @@ function MealCard({ ds, slot, meal, amounts, fed, onFedChange, onRefresh }: Meal
           </div>
         </div>
 
-        {/* Ingredients */}
         <CardContent className="p-0">
           <div className="divide-y divide-border/40">
             {SLOT_CONFIG.map(({ type, emoji, label }) => {
@@ -181,7 +177,6 @@ function MealCard({ ds, slot, meal, amounts, fed, onFedChange, onRefresh }: Meal
             })}
           </div>
 
-          {/* Supplements */}
           <button
             className="w-full px-4 py-2.5 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground hover:bg-muted/20 transition-colors"
             onClick={() => setShowSupps(s => !s)}
@@ -257,6 +252,7 @@ export function HomePage({ setView }: { setView: (v: string) => void }) {
     ? calculateMER(activeDog.weightKg, activeDog.activityLevel, activeDog.bodyCondition, activeDog.ageMonths, activeDog.neutered)
     : 0;
   const amounts = mer > 0 ? computeMealAmounts(mer) : DEFAULT_AMOUNTS;
+  const walkStats = activeDog ? totalWalkStats(activeDog.id, 7) : { count: 0, miles: 0, minutes: 0 };
 
   if (!activeDog) {
     return (
@@ -278,13 +274,31 @@ export function HomePage({ setView }: { setView: (v: string) => void }) {
 
   return (
     <div className="space-y-4 pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header */}
-      <div className="flex justify-between items-end pt-1">
+      {/* Page title */}
+      <div className="flex items-center justify-between pt-1">
+        <h1 className="text-2xl font-serif font-bold tracking-tight text-foreground">Home</h1>
+        <div className="text-xs text-muted-foreground font-medium">{todayFormatted}</div>
+      </div>
+
+      {bothFed && (
+        <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 flex items-center gap-2.5">
+          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+          <div>
+            <div className="font-bold text-sm text-green-700 dark:text-green-300">Both meals logged today! 🎉</div>
+            <div className="text-[11px] text-muted-foreground">Great job keeping up with {activeDog.name}'s nutrition.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Greeting + MER */}
+      <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-serif font-bold tracking-tight text-foreground">
+          <h2 className="text-xl font-serif font-bold tracking-tight text-foreground">
             Hi, {activeDog.name} 🐾
           </h2>
-          <p className="text-xs font-medium text-muted-foreground mt-0.5">{todayFormatted}</p>
+          <p className="text-xs font-medium text-muted-foreground mt-0.5">
+            {(activeDog.weightKg * 2.205).toFixed(0)} lbs · {activeDog.activityLevel} activity
+          </p>
         </div>
         <div className="text-right">
           {mer > 0 && (
@@ -298,19 +312,8 @@ export function HomePage({ setView }: { setView: (v: string) => void }) {
         </div>
       </div>
 
-      {/* Fed status banner */}
-      {bothFed && (
-        <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 flex items-center gap-2.5">
-          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
-          <div>
-            <div className="font-bold text-sm text-green-700 dark:text-green-300">Both meals logged today! 🎉</div>
-            <div className="text-[11px] text-muted-foreground">Great job keeping up with {activeDog.name}'s nutrition.</div>
-          </div>
-        </div>
-      )}
-
       {/* Meal stats */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <div className="bg-card rounded-xl p-2.5 text-center border border-border/40 shadow-sm">
           <div className="text-lg font-bold text-foreground">{amounts.protein + amounts.starch + amounts.veg + amounts.organ}oz</div>
           <div className="text-[10px] text-muted-foreground font-medium">per meal</div>
@@ -327,9 +330,12 @@ export function HomePage({ setView }: { setView: (v: string) => void }) {
           </div>
           <div className="text-[10px] text-muted-foreground font-medium">PM fed</div>
         </div>
+        <div className="bg-card rounded-xl p-2.5 text-center border border-border/40 shadow-sm">
+          <div className="text-lg font-bold text-foreground">{walkStats.count}</div>
+          <div className="text-[10px] text-muted-foreground font-medium">walks</div>
+        </div>
       </div>
 
-      {/* AM Meal */}
       <MealCard
         key={`am-${tick}`}
         ds={ds}
@@ -341,7 +347,6 @@ export function HomePage({ setView }: { setView: (v: string) => void }) {
         onRefresh={refresh}
       />
 
-      {/* PM Meal */}
       <MealCard
         key={`pm-${tick}`}
         ds={ds}
@@ -353,25 +358,22 @@ export function HomePage({ setView }: { setView: (v: string) => void }) {
         onRefresh={refresh}
       />
 
-      {/* Quick nav */}
       <div className="flex gap-2">
         <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setView('recipebox')}>
-          📅 View 4-Week Plan
+          📅 View Plan
         </Button>
         <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setView('nutrition')}>
-          🥗 Nutrition Stats
+          🥗 Nutrition
         </Button>
       </div>
 
-      {/* Weight indicator */}
-      {activeDog.weightKg > 0 && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
-          <span>{activeDog.name} · {(activeDog.weightKg * 2.205).toFixed(0)} lbs · {activeDog.activityLevel} activity</span>
-          <Button variant="link" size="sm" className="h-auto p-0 text-primary text-xs" onClick={() => setView('profile')}>
-            Edit <ChevronRight className="w-3 h-3 ml-0.5" />
-          </Button>
+      {/* Vet disclaimer - dark mode visible */}
+      <div className="rounded-xl border border-border/40 bg-amber-500/10 dark:bg-amber-900/20 p-3.5 flex gap-3">
+        <Info className="w-5 h-5 text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+        <div className="text-xs text-foreground/90 leading-relaxed">
+          <strong className="text-amber-700 dark:text-amber-200">Important:</strong> The FRESHBOWL method is a whole-food planning tool, not a substitute for professional veterinary advice. Always consult your vet before changing medications, treating illness, or diagnosing conditions.
         </div>
-      )}
+      </div>
     </div>
   );
 }

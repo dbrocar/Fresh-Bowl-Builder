@@ -1,0 +1,1 @@
+- [FreshBowl local-only shared access](freshbowl-shared-access.md) — dog-walker sharing is PIN-based localStorage only; no real auth or cross-device sync.

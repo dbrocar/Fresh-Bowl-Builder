@@ -1,45 +1,46 @@
-# [Project name]
+# FRESHBOWL
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+**FRESHBOWL: Total Health Tracking and Modular Whole-Food Meal Prep**
 
-## Run & Operate
+A full-featured React PWA for planning, tracking, and optimizing fresh whole-food meals for dogs. All data lives in the browser via `localStorage` under the `freshbowl_v2` key plus related `fb_*` keys.
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+## Artifacts
 
-## Stack
+- `artifacts/freshbowl` — the main React + Vite web app (PWA).
+- `artifacts/api-server` — API server (not used by this app; data is local-only).
+- `artifacts/mockup-sandbox` — canvas / component preview server.
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+## Tech Stack
 
-## Where things live
+- React + TypeScript + Vite
+- Tailwind CSS v4 + shadcn/ui components
+- next-themes for dark/light mode
+- Recharts for nutrition charts
+- `localStorage` for persistence
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+## Key Modules
 
-## Architecture decisions
+- `src/lib/foods.ts` — FOODS nutrient database, AAFCO targets, supplement constants, and compliance math.
+- `src/lib/rotation.ts` — 4-week rotating meal plan template and helpers.
+- `src/lib/feedlog.ts` — feeding log, swaps, supplement checks, and daily notes.
+- `src/lib/care.ts` — health checks, weight log, medications, grooming, vaccinations, vet info, walks, and shared dog-walker access.
+- `src/lib/storage.ts` — dog/profile types and CRUD.
+- `src/lib/nutrition.ts` — MER/RER calculation and `generateRotation()`.
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+## Pages
 
-## Product
+- **Home** — AM/PM meal cards, Mark Fed, swap sheets, supplement checklists, daily summary.
+- **Feeding Schedule** — 4-week rotation viewer and month-based feeding calendar with day-detail modals and add-in items.
+- **Nutrition** — AAFCO compliance bars from logged meals, macronutrient donut chart, daily averages, period selector.
+- **Health Tools** — calculators, GPS walk tracker, and dog-walker limited-access login.
+- **Guide** — whole-food feeding education, AAFCO tables, protein/organ/veg guides, transition steps, toxic foods.
+- **Dog Profile** — dog details, favorites, saved calculator results, daily health checks, weight log, medications, grooming, vaccinations, vet info, and dog-walker sharing.
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+## Visual Style
 
-## User preferences
+"Canine Nutritionist Notebook": warm amber palette, Fraunces serif + Outfit sans-serif fonts, dark mode based on a deep brown palette. Page titles are shown at the top of every view.
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+## User Preferences
 
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Dark mode follows the user toggle in the header.
+- The app is intentionally offline-first and local-only.

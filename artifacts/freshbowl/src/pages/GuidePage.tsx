@@ -14,8 +14,8 @@ function Row({ label, val, note }: { label: string; val: string; note?: string }
 export function GuidePage() {
   return (
     <div className="space-y-6 pb-6 animate-in fade-in duration-500">
-      <div>
-        <h2 className="text-3xl font-serif font-bold tracking-tight mb-1">FreshBowl Guide</h2>
+      <div className="pt-1">
+        <h1 className="text-2xl font-serif font-bold tracking-tight text-foreground">FreshBowl Guide</h1>
         <p className="text-muted-foreground text-sm font-medium">Everything you need to know about whole-food feeding.</p>
       </div>
 
@@ -67,7 +67,6 @@ export function GuidePage() {
       <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
         <Accordion type="multiple" className="w-full">
 
-          {/* AAFCO COMPLETE */}
           <AccordionItem value="aafco" className="border-b border-border/50">
             <AccordionTrigger className="px-4 py-4 text-sm font-bold hover:no-underline">
               📋 Complete AAFCO Nutrient Requirements
@@ -123,7 +122,6 @@ export function GuidePage() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* 70/10/10/10 RULE */}
           <AccordionItem value="ratio" className="border-b border-border/50">
             <AccordionTrigger className="px-4 py-4 text-sm font-bold hover:no-underline">
               🥣 The 70/10/10/10 Bowl Rule
@@ -152,7 +150,6 @@ export function GuidePage() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* FEEDING PERCENTAGES */}
           <AccordionItem value="feeding-pct" className="border-b border-border/50">
             <AccordionTrigger className="px-4 py-4 text-sm font-bold hover:no-underline">
               ⚖️ How Much to Feed by Body Weight
@@ -175,7 +172,6 @@ export function GuidePage() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* PROTEIN GUIDE */}
           <AccordionItem value="proteins" className="border-b border-border/50">
             <AccordionTrigger className="px-4 py-4 text-sm font-bold hover:no-underline">
               🥩 Protein Selection Guide
@@ -201,7 +197,6 @@ export function GuidePage() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* ORGAN GUIDE */}
           <AccordionItem value="organs" className="border-b border-border/50">
             <AccordionTrigger className="px-4 py-4 text-sm font-bold hover:no-underline">
               🫀 Organ Meat — Nature's Multivitamin
@@ -217,7 +212,7 @@ export function GuidePage() {
                   { name: "Pancreas", emoji: "🩷", note: "Secreting organ — digestive enzymes", profile: "Natural source of digestive enzymes (lipase, amylase, protease). Beneficial for dogs with EPI (exocrine pancreatic insufficiency)." },
                   { name: "Brain", emoji: "🧠", note: "Secreting organ — rich fat", profile: "Extremely rich in DHA omega-3 and phospholipids. Excellent for puppies and senior dogs. Limit to 1–2× per week due to high fat." },
                 ].map(o => (
-                  <div key={o.name} className="p-3 bg-muted rounded-xl">
+                  <div key={o.name} className="p-3 rounded-xl bg-muted">
                     <div className="flex justify-between">
                       <div className="font-semibold">{o.emoji} {o.name}</div>
                       <div className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{o.note}</div>
@@ -229,7 +224,6 @@ export function GuidePage() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* VEG & STARCH */}
           <AccordionItem value="veggies" className="border-b border-border/50">
             <AccordionTrigger className="px-4 py-4 text-sm font-bold hover:no-underline">
               🥦 Vegetables & Starches
@@ -262,7 +256,6 @@ export function GuidePage() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* TRANSITION GUIDE */}
           <AccordionItem value="transition" className="border-b border-border/50">
             <AccordionTrigger className="px-4 py-4 text-sm font-bold hover:no-underline">
               🔄 Transitioning from Kibble
@@ -286,7 +279,6 @@ export function GuidePage() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* HYDRATION */}
           <AccordionItem value="hydration" className="border-b border-border/50">
             <AccordionTrigger className="px-4 py-4 text-sm font-bold hover:no-underline">
               💧 Hydration & Water Needs
@@ -300,7 +292,6 @@ export function GuidePage() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* FOODS TO AVOID */}
           <AccordionItem value="toxic" className="border-none">
             <AccordionTrigger className="px-4 py-4 text-sm font-bold hover:no-underline">
               🚫 Toxic Foods & Safety Rules

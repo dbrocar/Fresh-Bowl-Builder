@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { HealthCheck, GroomingRecord, Vaccination, VetInfo } from "./care";
 
 export type CustomItemCategory = 'protein' | 'organ' | 'veggie' | 'starch' | 'constant' | 'treat';
 
@@ -48,9 +49,11 @@ export interface SavedCalculation {
 export interface Medication {
   id: string;
   name: string;
-  lastDate: string;
+  dosage: string;
   frequencyDays: number;
-  nextDates: string[];
+  lastDate: string;
+  notes?: string;
+  nextDates?: string[];
 }
 
 export interface WeightEntry {
@@ -95,6 +98,12 @@ export interface Dog {
   healthEvents: HealthEvent[];
   savedCalculations: SavedCalculation[];
   medications: Medication[];
+
+  // care module
+  healthChecks?: HealthCheck[];
+  grooming?: GroomingRecord[];
+  vaccinations?: Vaccination[];
+  vetInfo?: VetInfo;
 }
 
 export interface AppData {

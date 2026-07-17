@@ -1,6 +1,8 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import { Phone, MapPin, Share2, Lock, Users } from "lucide-react";
 
 function Row({ label, val, note }: { label: string; val: string; note?: string }) {
   return (
@@ -66,6 +68,38 @@ export function GuidePage() {
       {/* MAIN ACCORDION */}
       <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
         <Accordion type="multiple" className="w-full">
+
+          <AccordionItem value="sharing" className="border-b border-border/50">
+            <AccordionTrigger className="px-4 py-4 text-sm font-bold hover:no-underline">
+              🐕 Dog Walker Access & Important Contacts
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4 space-y-4 text-sm">
+              <div className="space-y-3">
+                <div className="p-3 bg-muted rounded-xl">
+                  <div className="font-bold flex items-center gap-2 mb-1"><Lock className="w-4 h-4 text-primary" /> How a dog walker logs in</div>
+                  <p className="text-muted-foreground text-xs leading-relaxed">Go to <strong>Utilities</strong> → <strong>Dog Walker Login</strong> and enter the PIN you created in <strong>Dog Profile → Share</strong>. The walker gets a limited view: today's schedule, the ability to mark meals, and the walk tracker. They cannot edit medical records, recipes, or the profile.</p>
+                </div>
+                <div className="p-3 bg-muted rounded-xl">
+                  <div className="font-bold flex items-center gap-2 mb-1"><Users className="w-4 h-4 text-primary" /> Setting up a walker</div>
+                  <ol className="text-xs text-muted-foreground list-decimal list-inside space-y-1">
+                    <li>Open <strong>Dog Profile → Share</strong>.</li>
+                    <li>Enter the walker's name and choose a 4+ digit PIN.</li>
+                    <li>Turn on what they can do: log walks, mark feedings, view schedule.</li>
+                    <li>Tap <strong>Create Access</strong> and share the PIN and app link with them.</li>
+                  </ol>
+                </div>
+                <Button className="w-full" onClick={() => {
+                  const url = typeof window !== "undefined" ? window.location.href : "";
+                  if (navigator.share) navigator.share({ title: "FreshBowl", url }).catch(() => {});
+                  else if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => alert("App link copied to clipboard"));
+                }}><Share2 className="w-4 h-4 mr-2" /> Send App Link</Button>
+                <div className="p-3 bg-muted rounded-xl">
+                  <div className="font-bold flex items-center gap-2 mb-1"><Phone className="w-4 h-4 text-primary" /> Important contacts</div>
+                  <p className="text-muted-foreground text-xs leading-relaxed">Save your vet, emergency clinic, groomer, trainer, and any other key contacts under <strong>Dog Profile → Care → Vet Information</strong>. Tap any saved phone number to call, or tap an address to open it in Maps. Add extra contacts under the vet card.</p>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
           <AccordionItem value="aafco" className="border-b border-border/50">
             <AccordionTrigger className="px-4 py-4 text-sm font-bold hover:no-underline">

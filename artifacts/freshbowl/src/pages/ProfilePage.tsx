@@ -9,19 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Camera, Check, ArrowLeft, Save, Weight, HeartPulse, Stethoscope, Syringe, Scissors, Building, Users, Share2, Dog, Calculator, GraduationCap } from "lucide-react";
+import { Trash2, Camera, Check, ArrowLeft, Save, Weight, HeartPulse, Stethoscope, Syringe, Scissors, Building, Users, Share2, Dog, Calculator, GraduationCap, Phone, MapPin, Mail, UserCircle, Plus, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { HealthCheck, GroomingRecord, Vaccination, VetInfo } from "@/lib/care";
+import type { HealthCheck, GroomingRecord, Vaccination, VetInfo, VaccineType, Contact } from "@/lib/care";
 import type { Medication, WeightEntry } from "@/lib/storage";
 import {
   addHealthCheck, latestHealthCheck, healthAverageForDays, getHealthChecks,
   addWeightEntry, removeWeightEntry, getWeightLog,
   addMedication, removeMedication, getMedications, nextDueDate, isOverdue, recordMedicationGiven,
   addGrooming, removeGrooming, getGrooming,
-  addVaccination, removeVaccination, getVaccinations,
-  updateVetInfo, getVetInfo,
+  addVaccination, removeVaccination, getVaccinations, VACCINE_TYPES, vaccinationName,
+  updateVetInfo, getVetInfo, makeId,
   addTraining, removeTraining, getTraining, trainingStats,
   addSharedAccess, getSharedAccesses, removeSharedAccess
 } from "@/lib/care";
@@ -339,15 +339,21 @@ export function ProfilePage({ setView }: { setView: (v: string) => void }) {
   // ── Vaccinations ──
   function VaccinationPanel() {
     const [records, setRecords] = useState<Vaccination[]>(getVaccinations());
-    const [name, setName] = useState(""); const [given, setGiven] = useState(new Date().toISOString().split("T")[0]); const [due, setDue] = useState(""); const [clinic, setClinic] = useState(""); const [notes, setNotes] = useState("");
+    const [type, setType] = useState<VaccineType>("Rabies"); const [customName, setCustomName] = useState(""); const [given, setGiven] = useState(new Date().toISOString().split("T")[0]); const [due, setDue] = useState(""); const [clinic, setClinic] = useState(""); const [notes, setNotes] = useState("");
     const reload = () => setRecords(getVaccinations());
-    const add = () => { if (!name || !due) return; addVaccination({ name, givenDate: given, dueDate: due, clinic, notes }); reload(); setName(""); setClinic(""); setNotes(""); toast({ title: "Vaccination saved" }); };
+    const add = () => { if (!due) return; addVaccination({ type, customName, givenDate: given, dueDate: due, clinic, notes }); reload(); setCustomName(""); setClinic(""); setNotes(""); toast({ title: "Vaccination saved" }); };
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-2">
-          <Input placeholder="Vaccine name" value={name} onChange={e => setName(e.target.value)} />
+          <Select value={type} onValueChange={v => setType(v as VaccineType)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {VACCINE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Input placeholder="Clinic" value={clinic} onChange={e => setClinic(e.target.value)} />
         </div>
+        {type === "Other" && <Input placeholder="Custom vaccine name" value={customName} onChange={e => setCustomName(e.target.value)} />}
         <div className="grid grid-cols-2 gap-2">
           <Input type="date" value={given} onChange={e => setGiven(e.target.value)} />
           <Input type="date" placeholder="Due date" value={due} onChange={e => setDue(e.target.value)} />
@@ -360,7 +366,7 @@ export function ProfilePage({ setView }: { setView: (v: string) => void }) {
             return (
               <div key={r.id} className={cn("p-3 rounded-xl border text-sm", overdue ? "border-amber-500/30 bg-amber-500/10" : "border-border/40 bg-muted/40")}>
                 <div className="flex justify-between items-start">
-                  <div className="font-bold">{r.name}</div>
+                  <div className="font-bold">{vaccinationName(r)}</div>
                   <button onClick={() => { removeVaccination(r.id); reload(); }} className="text-destructive text-xs">Remove</button>
                 </div>
                 <div className="text-xs text-muted-foreground">Given {r.givenDate} · Due {r.dueDate} {overdue && <span className="font-bold text-amber-600 dark:text-amber-400">OVERDUE</span>}</div>
@@ -375,15 +381,69 @@ export function ProfilePage({ setView }: { setView: (v: string) => void }) {
   // ── Vet Info ──
   function VetInfoPanel() {
     const [vet, setVet] = useState<VetInfo>(getVetInfo());
-    const save = () => { updateVetInfo(vet); toast({ title: "Vet info saved" }); };
+    const [edit, setEdit] = useState(false);
+    const [contacts, setContacts] = useState<Contact[]>(vet.contacts || []);
+    const [newContact, setNewContact] = useState({ name: "", role: "", phone: "", address: "" });
+    const save = () => { const updated = { ...vet, contacts }; updateVetInfo(updated); setVet(updated); setEdit(false); toast({ title: "Vet info saved" }); };
+    const addContact = () => { if (!newContact.name) return; const c: Contact = { id: makeId(), ...newContact }; setContacts([...contacts, c]); setNewContact({ name: "", role: "", phone: "", address: "" }); };
+    const removeContact = (id: string) => setContacts(contacts.filter(c => c.id !== id));
+    const tel = (n?: string) => n ? `tel:${n.replace(/[^\d+\-]/g, "")}` : undefined;
+    const map = (a?: string) => a ? `https://maps.google.com/?q=${encodeURIComponent(a)}` : undefined;
+    const emailHref = (e?: string) => e ? `mailto:${e}` : undefined;
     return (
-      <div className="space-y-3">
-        <Input placeholder="Vet / Clinic name" value={vet.name} onChange={e => setVet({ ...vet, name: e.target.value })} />
-        <Input placeholder="Phone" value={vet.phone} onChange={e => setVet({ ...vet, phone: e.target.value })} />
-        <Input placeholder="Address" value={vet.address} onChange={e => setVet({ ...vet, address: e.target.value })} />
-        <Input placeholder="Email" value={vet.email} onChange={e => setVet({ ...vet, email: e.target.value })} />
-        <Input placeholder="Emergency vet / after-hours" value={vet.emergency} onChange={e => setVet({ ...vet, emergency: e.target.value })} />
-        <Button className="w-full" onClick={save}><Building className="w-4 h-4 mr-2" /> Save Vet Info</Button>
+      <div className="space-y-4">
+        {!edit ? (
+          <div className="space-y-3">
+            {vet.name && <div className="font-bold text-sm flex items-center gap-2"><Building className="w-4 h-4 text-primary" /> {vet.name}</div>}
+            <div className="grid gap-2">
+              {vet.phone && <a href={tel(vet.phone)} className="flex items-center gap-2 text-sm bg-primary/5 hover:bg-primary/10 rounded-lg px-3 py-2 transition-colors"><Phone className="w-4 h-4 text-primary shrink-0" /> <span>{vet.phone}</span></a>}
+              {vet.address && <a href={map(vet.address)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm bg-primary/5 hover:bg-primary/10 rounded-lg px-3 py-2 transition-colors"><MapPin className="w-4 h-4 text-primary shrink-0" /> <span className="leading-tight">{vet.address}</span></a>}
+              {vet.email && <a href={emailHref(vet.email)} className="flex items-center gap-2 text-sm bg-primary/5 hover:bg-primary/10 rounded-lg px-3 py-2 transition-colors"><Mail className="w-4 h-4 text-primary shrink-0" /> <span>{vet.email}</span></a>}
+              {vet.emergency && <a href={tel(vet.emergency)} className="flex items-center gap-2 text-sm bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg px-3 py-2 transition-colors"><Phone className="w-4 h-4 shrink-0" /> <span>Emergency: {vet.emergency}</span></a>}
+            </div>
+            {contacts.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-primary mt-3">Other Important Contacts</div>
+                {contacts.map(c => (
+                  <div key={c.id} className="bg-muted/40 rounded-lg p-3 text-sm space-y-1">
+                    <div className="font-bold flex items-center gap-2"><UserCircle className="w-4 h-4 text-primary" /> {c.name} <span className="text-xs font-normal text-muted-foreground">· {c.role}</span></div>
+                    {c.phone && <a href={tel(c.phone)} className="flex items-center gap-2 text-xs text-primary hover:underline"><Phone className="w-3 h-3" /> {c.phone}</a>}
+                    {c.address && <a href={map(c.address)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline"><MapPin className="w-3 h-3" /> {c.address}</a>}
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button variant="outline" className="w-full" onClick={() => setEdit(true)}><Pencil className="w-4 h-4 mr-2" /> Edit Vet Info</Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <Input placeholder="Vet / Clinic name" value={vet.name} onChange={e => setVet({ ...vet, name: e.target.value })} />
+            <Input placeholder="Phone" value={vet.phone} onChange={e => setVet({ ...vet, phone: e.target.value })} />
+            <Input placeholder="Address" value={vet.address} onChange={e => setVet({ ...vet, address: e.target.value })} />
+            <Input placeholder="Email" value={vet.email} onChange={e => setVet({ ...vet, email: e.target.value })} />
+            <Input placeholder="Emergency vet / after-hours" value={vet.emergency} onChange={e => setVet({ ...vet, emergency: e.target.value })} />
+            <div className="space-y-2 pt-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-primary">Add Important Contact</div>
+              <div className="grid grid-cols-2 gap-2">
+                <Input placeholder="Name" value={newContact.name} onChange={e => setNewContact({ ...newContact, name: e.target.value })} />
+                <Input placeholder="Role (e.g. groomer)" value={newContact.role} onChange={e => setNewContact({ ...newContact, role: e.target.value })} />
+              </div>
+              <Input placeholder="Phone" value={newContact.phone} onChange={e => setNewContact({ ...newContact, phone: e.target.value })} />
+              <Input placeholder="Address (optional)" value={newContact.address} onChange={e => setNewContact({ ...newContact, address: e.target.value })} />
+              <Button variant="outline" className="w-full" onClick={addContact}><Plus className="w-4 h-4 mr-2" /> Add Contact</Button>
+              {contacts.map(c => (
+                <div key={c.id} className="flex justify-between items-center bg-muted/40 rounded-lg px-3 py-2 text-sm">
+                  <span><strong>{c.name}</strong> · {c.role}</span>
+                  <button onClick={() => removeContact(c.id)} className="text-destructive text-xs">Remove</button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setVet(getVetInfo()); setContacts(vet.contacts || []); setEdit(false); }}>Cancel</Button>
+              <Button className="flex-1" onClick={save}><Building className="w-4 h-4 mr-2" /> Save</Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -4,7 +4,7 @@
 
 import { loadAppData, updateActiveDog, type Medication, type WeightEntry } from "./storage";
 
-function makeId(): string {
+export function makeId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
@@ -138,14 +138,22 @@ export function getGrooming(): GroomingRecord[] {
   return (dog?.grooming || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
+export type VaccineType = "Rabies" | "DHPP/DAPP" | "Bordetella" | "Leptospirosis" | "Lyme" | "Canine Influenza" | "Parvovirus" | "Distemper" | "Hepatitis" | "Other";
+export const VACCINE_TYPES: VaccineType[] = ["Rabies", "DHPP/DAPP", "Bordetella", "Leptospirosis", "Lyme", "Canine Influenza", "Parvovirus", "Distemper", "Hepatitis", "Other"];
+
 // ── Vaccinations ──
 export interface Vaccination {
   id: string;
-  name: string;
+  type: VaccineType;
+  customName?: string;
   givenDate: string;
   dueDate: string;
   clinic?: string;
   notes?: string;
+}
+
+export function vaccinationName(v: Vaccination): string {
+  return v.type === "Other" && v.customName ? v.customName : v.type;
 }
 
 export function addVaccination(v: Omit<Vaccination, "id">): Vaccination {
@@ -166,6 +174,15 @@ export function getVaccinations(): Vaccination[] {
   return (dog?.vaccinations || []).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 }
 
+// ── Contacts (under Vet Info) ──
+export interface Contact {
+  id: string;
+  name: string;
+  role: string;
+  phone: string;
+  address: string;
+}
+
 // ── Vet Info ──
 export interface VetInfo {
   name: string;
@@ -173,11 +190,12 @@ export interface VetInfo {
   address: string;
   email: string;
   emergency: string;
+  contacts: Contact[];
 }
 
 export function getVetInfo(): VetInfo {
   const dog = loadAppData().dogs.find(d => d.id === loadAppData().activeDogId);
-  return dog?.vetInfo || { name: "", phone: "", address: "", email: "", emergency: "" };
+  return dog?.vetInfo || { name: "", phone: "", address: "", email: "", emergency: "", contacts: [] };
 }
 
 export function updateVetInfo(vetInfo: VetInfo) {

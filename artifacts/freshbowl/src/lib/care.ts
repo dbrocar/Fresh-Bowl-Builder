@@ -184,6 +184,44 @@ export function updateVetInfo(vetInfo: VetInfo) {
   updateActiveDog({ vetInfo });
 }
 
+// ── Training Schedule / Log ──
+export type TrainingSkill = "Sit" | "Stay" | "Come" | "Heel" | "Leave it" | "Place" | "Crate" | "Loose Leash" | "Recall" | "Trick" | "Socialization" | "Other";
+export type TrainingSuccess = 1 | 2 | 3 | 4 | 5;
+export interface TrainingSession {
+  id: string;
+  date: string;
+  skill: TrainingSkill | string;
+  durationMin: number;
+  notes?: string;
+  success: TrainingSuccess;
+}
+
+export function addTraining(session: Omit<TrainingSession, "id">): TrainingSession {
+  const full: TrainingSession = { ...session, id: makeId() };
+  const data = loadAppData();
+  const dog = data.dogs.find(d => d.id === data.activeDogId);
+  updateActiveDog({ training: [...(dog?.training || []), full] });
+  return full;
+}
+
+export function removeTraining(id: string) {
+  const dog = loadAppData().dogs.find(d => d.id === loadAppData().activeDogId);
+  updateActiveDog({ training: (dog?.training || []).filter(t => t.id !== id) });
+}
+
+export function getTraining(): TrainingSession[] {
+  const dog = loadAppData().dogs.find(d => d.id === loadAppData().activeDogId);
+  return (dog?.training || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+export function trainingStats(): { totalMin: number; sessions: number; bySkill: Record<string, number> } {
+  const sessions = getTraining();
+  const totalMin = sessions.reduce((s, t) => s + t.durationMin, 0);
+  const bySkill: Record<string, number> = {};
+  sessions.forEach(t => { bySkill[t.skill] = (bySkill[t.skill] || 0) + 1; });
+  return { totalMin, sessions: sessions.length, bySkill };
+}
+
 // ── Walks (stored in localStorage, keyed by dog) ──
 export interface WalkPoint {
   lat: number;
@@ -211,7 +249,7 @@ export function saveWalk(walk: Walk) {
   const idx = all.findIndex(w => w.id === walk.id);
   if (idx >= 0) all[idx] = walk; else all.push(walk);
   all.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-  localStorage.setItem(key, JSON.stringify(all.slice(-100)));
+  localStorage.setItem(key, JSON.stringify(all));
 }
 
 export function getWalks(dogId: string): Walk[] {

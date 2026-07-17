@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Camera, Check, ArrowLeft, Save, Weight, HeartPulse, Stethoscope, Syringe, Scissors, Building, Users, Share2, Dog, Calculator } from "lucide-react";
+import { Trash2, Camera, Check, ArrowLeft, Save, Weight, HeartPulse, Stethoscope, Syringe, Scissors, Building, Users, Share2, Dog, Calculator, GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ import {
   addGrooming, removeGrooming, getGrooming,
   addVaccination, removeVaccination, getVaccinations,
   updateVetInfo, getVetInfo,
+  addTraining, removeTraining, getTraining, trainingStats,
   addSharedAccess, getSharedAccesses, removeSharedAccess
 } from "@/lib/care";
 
@@ -387,6 +388,57 @@ export function ProfilePage({ setView }: { setView: (v: string) => void }) {
     );
   }
 
+  // ── Training Schedule / Log ──
+  function TrainingPanel() {
+    const [sessions, setSessions] = useState(getTraining());
+    const [skill, setSkill] = useState("Sit"); const [duration, setDuration] = useState("10"); const [date, setDate] = useState(new Date().toISOString().split("T")[0]); const [notes, setNotes] = useState(""); const [success, setSuccess] = useState(3);
+    const stats = trainingStats();
+    const reload = () => setSessions(getTraining());
+    const add = () => {
+      addTraining({ skill, durationMin: parseInt(duration) || 0, date, notes, success: success as 1 | 2 | 3 | 4 | 5 });
+      reload(); setNotes(""); toast({ title: "Training session logged" });
+    };
+    const skills = ["Sit", "Stay", "Come", "Heel", "Leave it", "Place", "Crate", "Loose Leash", "Recall", "Trick", "Socialization", "Other"];
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-3 gap-2">
+          <Select value={skill} onValueChange={setSkill}>
+            <SelectTrigger className="col-span-2"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {skills.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="number" placeholder="min" value={duration} onChange={e => setDuration(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          <Select value={String(success)} onValueChange={v => setSuccess(Number(v))}>
+            <SelectTrigger><SelectValue placeholder="Success" /></SelectTrigger>
+            <SelectContent>
+              {[1, 2, 3, 4, 5].map(n => <SelectItem key={n} value={String(n)}>{n}/5</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <Textarea placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} className="h-16 text-sm" />
+        <Button className="w-full" onClick={add}><GraduationCap className="w-4 h-4 mr-2" /> Log Training</Button>
+        {stats.sessions > 0 && (
+          <div className="bg-muted/40 rounded-lg p-3 text-sm space-y-1">
+            <div className="font-bold">{stats.sessions} sessions · {stats.totalMin} minutes</div>
+            <div className="text-xs text-muted-foreground">Most practiced: {Object.entries(stats.bySkill).sort((a, b) => b[1] - a[1])[0]?.[0] || "—"}</div>
+          </div>
+        )}
+        <div className="space-y-2">
+          {sessions.map(t => (
+            <div key={t.id} className="flex justify-between items-center bg-muted/40 rounded-lg px-3 py-2 text-sm">
+              <span><strong>{t.skill}</strong> · {t.durationMin}m · {t.success}/5</span>
+              <button onClick={() => { removeTraining(t.id); reload(); }} className="text-destructive text-xs">Remove</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   // ── Shared Access (Dog Walker) ──
   function SharedAccessPanel() {
     const dogId = activeDog?.id;
@@ -594,6 +646,10 @@ export function ProfilePage({ setView }: { setView: (v: string) => void }) {
           <Card className="border-none shadow-sm bg-card"><CardContent className="p-4">
             <SectionTitle icon={Building} title="Vet Information" />
             <VetInfoPanel />
+          </CardContent></Card>
+          <Card className="border-none shadow-sm bg-card"><CardContent className="p-4">
+            <SectionTitle icon={GraduationCap} title="Training Schedule" />
+            <TrainingPanel />
           </CardContent></Card>
         </TabsContent>
 

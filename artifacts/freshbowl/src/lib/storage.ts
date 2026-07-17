@@ -104,6 +104,16 @@ export interface Dog {
   grooming?: GroomingRecord[];
   vaccinations?: Vaccination[];
   vetInfo?: VetInfo;
+  training?: TrainingSession[];
+}
+
+export interface TrainingSession {
+  id: string;
+  date: string;
+  skill: string;
+  durationMin: number;
+  notes?: string;
+  success: 1 | 2 | 3 | 4 | 5;
 }
 
 export interface AppData {

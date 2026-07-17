@@ -14,6 +14,7 @@ import { getDaySchedule, toDateKey, today, formatDateLong } from "@/lib/rotation
 import { isFed, markFed } from "@/lib/feedlog";
 import { saveWalk, getWalks, deleteWalk, totalWalkStats, haversineMiles, getWalkerSession, storeWalkerSession, clearWalkerSession, validateSharedAccess } from "@/lib/care";
 import type { Walk } from "@/lib/care";
+import { WalkMap } from "@/components/WalkMap";
 
 function stopProp(e: React.PointerEvent | React.MouseEvent | React.TouchEvent) {
   e.stopPropagation();
@@ -176,6 +177,11 @@ function WalkTracker() {
 
         {!activeDog && <div className="text-xs text-center text-muted-foreground">Select a dog in the header to start tracking.</div>}
 
+        {/* Live route preview */}
+        {isTracking && points.length > 1 && (
+          <WalkMap points={points} height="220px" />
+        )}
+
         {/* Recent walks */}
         {walks.length > 0 && (
           <div className="space-y-2">
@@ -183,12 +189,15 @@ function WalkTracker() {
               {showRecent ? "Hide" : "Show"} recent walks
             </button>
             {showRecent && walks.slice().reverse().slice(0, 5).map(w => (
-              <div key={w.id} className="flex justify-between items-center bg-background/60 dark:bg-background/30 rounded-lg px-3 py-2 text-sm">
-                <div>
-                  <div className="font-bold">{new Date(w.startTime).toLocaleDateString()} · {formatTime(w.durationSec)}</div>
-                  <div className="text-xs text-muted-foreground">{w.distanceMiles.toFixed(2)} mi</div>
+              <div key={w.id} className="space-y-2">
+                <div className="flex justify-between items-center bg-background/60 dark:bg-background/30 rounded-lg px-3 py-2 text-sm">
+                  <div>
+                    <div className="font-bold">{new Date(w.startTime).toLocaleDateString()} · {formatTime(w.durationSec)}</div>
+                    <div className="text-xs text-muted-foreground">{w.distanceMiles.toFixed(2)} mi</div>
+                  </div>
+                  <button className="text-destructive text-xs" onClick={() => { if (activeDog) deleteWalk(w.id, activeDog.id); reload(); }}>Delete</button>
                 </div>
-                <button className="text-destructive text-xs" onClick={() => { if (activeDog) deleteWalk(w.id, activeDog.id); reload(); }}>Delete</button>
+                {w.points.length > 1 && <WalkMap points={w.points} height="160px" />}
               </div>
             ))}
           </div>

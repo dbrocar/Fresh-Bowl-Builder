@@ -265,6 +265,9 @@ export function HomePage({ setView }: { setView: (v: string) => void }) {
         <Button onClick={() => setView('profile')} size="lg" className="mt-4 font-bold tracking-wide">
           Set Up Profile
         </Button>
+        <p className="text-xs text-muted-foreground max-w-xs">
+          Once a dog is added, open <strong>Dog Profile</strong> to manage medications, vaccines, grooming, vet info, training, and walker sharing.
+        </p>
       </div>
     );
   }

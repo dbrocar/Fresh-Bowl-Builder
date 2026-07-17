@@ -96,6 +96,11 @@ export function setNote(ds: string, text: string) {
   saveNotes(notes);
 }
 
+// ── Add-ins (extra items per meal slot) ──
+export function loadAddIns(ds: string, slot: "am" | "pm"): Record<string, number> {
+  try { return JSON.parse(localStorage.getItem(`fb_addins_${ds}_${slot}`) ?? "{}"); } catch { return {}; }
+}
+
 // ── Amount overrides (oz) ──
 export function loadAmounts(): Record<string, number> {
   try { return JSON.parse(localStorage.getItem("fb_amounts") ?? "{}"); } catch { return {}; }

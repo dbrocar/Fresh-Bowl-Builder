@@ -1,14 +1,15 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import { useAppData } from "@/hooks/use-app-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import { Info, TrendingUp, ArrowLeft, ArrowRight } from "lucide-react";
+import { Info, ArrowLeft, ArrowRight } from "lucide-react";
 import { calculateMER } from "@/lib/nutrition";
-import { FOODS, AAFCO, addFood, addSupps, calcKcalFromNutrients, aafcoCompliance, zeroNutrients, computeMealAmounts, DEFAULT_AMOUNTS } from "@/lib/foods";
+import { FOODS, AAFCO, addSupps, calcKcalFromNutrients, aafcoCompliance, zeroNutrients, computeMealAmounts, DEFAULT_AMOUNTS, SUPPS_PER_MEAL } from "@/lib/foods";
 import { getWeekNumber, getDayAbbrev, WEEKS_BASE, toDateKey, today, addDays } from "@/lib/rotation";
-import { isFed, getEffectiveMeal, loadFedLog } from "@/lib/feedlog";
+import { isFed, getEffectiveMeal, loadFedLog, loadAddIns } from "@/lib/feedlog";
 
 type Period = "today" | "week" | "month";
 
@@ -26,17 +27,30 @@ function toDS(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+interface Contributor { name: string; amount: number; value: number; unit: string }
+
 function computeNutrients(dates: Date[], amounts: typeof DEFAULT_AMOUNTS): {
   totals: Record<string, number>;
   kcal: number;
   fedMealCount: number;
   dailyTotals: { date: string; kcal: number; protein: number; fat: number }[];
+  contributors: Record<string, Contributor[]>;
 } {
   const totals = zeroNutrients();
+  const contributors: Record<string, Contributor[]> = {};
   let kcal = 0;
   let fedMealCount = 0;
   const fedLog = loadFedLog();
   const dailyTotals: { date: string; kcal: number; protein: number; fat: number }[] = [];
+
+  function addContributor(key: string, name: string, amount: number, value: number, unit: string) {
+    if (!value) return;
+    const list = contributors[key] || [];
+    const existing = list.find(x => x.name === name);
+    if (existing) { existing.amount += amount; existing.value += value; }
+    else list.push({ name, amount, value, unit });
+    contributors[key] = list;
+  }
 
   for (const date of dates) {
     const ds = toDS(date);
@@ -51,11 +65,30 @@ function computeNutrients(dates: Date[], amounts: typeof DEFAULT_AMOUNTS): {
       fedMealCount++;
       const meal = getEffectiveMeal(ds, slot, daySchedule[slot]);
       if (!meal) continue;
-      addFood(totals, meal.protein, amounts.protein);
-      addFood(totals, meal.starch, amounts.starch);
-      addFood(totals, meal.veg, amounts.veg);
-      if (meal.organ) addFood(totals, meal.organ, amounts.organ);
+      const ingredients: { name: string; oz: number }[] = [
+        { name: meal.protein, oz: amounts.protein },
+        { name: meal.starch, oz: amounts.starch },
+        { name: meal.veg, oz: amounts.veg },
+        ...(meal.organ ? [{ name: meal.organ, oz: amounts.organ }] : []),
+      ];
+      const addins = loadAddIns(ds, slot);
+      for (const [item, oz] of Object.entries(addins)) ingredients.push({ name: item, oz });
+
+      for (const { name, oz } of ingredients) {
+        const profile = FOODS[name];
+        if (!profile) continue;
+        for (const key of Object.keys(profile) as (keyof typeof profile)[]) {
+          const v = (profile[key] as number) * oz;
+          if (v) {
+            totals[key] = (totals[key] || 0) + v;
+            addContributor(key, name, oz, v, key === "protein" || key === "fat" || key === "carbs" || key === "moisture" || key === "ash" ? "g" : "mg");
+          }
+        }
+      }
       addSupps(totals);
+      for (const [k, v] of Object.entries(SUPPS_PER_MEAL)) {
+        if (v) addContributor(k, "Daily supplements", 1, v, "mg");
+      }
       // per-day rough estimates
       dayProtein += (FOODS[meal.protein]?.protein || 0) * amounts.protein;
       dayFat += (FOODS[meal.protein]?.fat || 0) * amounts.protein;
@@ -65,20 +98,20 @@ function computeNutrients(dates: Date[], amounts: typeof DEFAULT_AMOUNTS): {
   }
 
   kcal = calcKcalFromNutrients(totals);
-  return { totals, kcal, fedMealCount, dailyTotals };
+  return { totals, kcal, fedMealCount, dailyTotals, contributors };
 }
 
-function ComplianceBar({ label, unit, actual, scaledMin, scaledMax, pct, group }: {
-  label: string; unit: string; actual: number; scaledMin: number; scaledMax: number; pct: number; group: string;
+function ComplianceBar({ label, unit, actual, scaledMin, scaledMax, pct, group, onClick }: {
+  label: string; unit: string; actual: number; scaledMin: number; scaledMax: number; pct: number; group: string; onClick?: () => void;
 }) {
   const isOk = actual >= scaledMin;
   const isTooMuch = scaledMax < Infinity && actual > scaledMax;
   const barPct = Math.min(pct * 100, 100);
   const displayVal = actual < 10 ? actual.toFixed(2) : actual < 100 ? actual.toFixed(1) : Math.round(actual).toString();
   return (
-    <div className="space-y-1">
+    <button onClick={onClick} className="w-full text-left space-y-1 group">
       <div className="flex items-baseline justify-between text-xs">
-        <span className="font-medium text-foreground">{label}</span>
+        <span className="font-medium text-foreground group-hover:text-primary transition-colors">{label}</span>
         <span className={cn("font-bold tabular-nums", isOk ? "text-green-600 dark:text-green-400" : "text-amber-500")}>
           {displayVal} <span className="font-normal text-muted-foreground">{unit}</span>
         </span>
@@ -90,7 +123,7 @@ function ComplianceBar({ label, unit, actual, scaledMin, scaledMax, pct, group }
         <span>Min: {scaledMin < 10 ? scaledMin.toFixed(2) : Math.round(scaledMin)} {unit}</span>
         {scaledMax < Infinity && <span>Max: {Math.round(scaledMax)} {unit}</span>}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -106,8 +139,9 @@ export function NutritionPage() {
   const amounts = mer > 0 ? computeMealAmounts(mer) : DEFAULT_AMOUNTS;
 
   const dates = useMemo(() => getDateRange(period), [period]);
-  const { totals, kcal, fedMealCount, dailyTotals } = useMemo(() => computeNutrients(dates, amounts), [dates, amounts]);
+  const { totals, kcal, fedMealCount, dailyTotals, contributors } = useMemo(() => computeNutrients(dates, amounts), [dates, amounts]);
   const compliance = useMemo(() => aafcoCompliance(totals, kcal), [totals, kcal]);
+  const [detail, setDetail] = useState<{ key: string; label: string; unit: string } | null>(null);
 
   // Dark-mode-aware chart colors
   const chartColors = isDark
@@ -115,10 +149,10 @@ export function NutritionPage() {
     : ["hsl(23, 56%, 54%)", "hsl(142, 71%, 45%)", "hsl(43, 74%, 66%)", "hsl(215, 20%, 55%)"];
 
   const macroData = [
-    { name: "Protein", value: Math.round(totals.protein ?? 0) },
-    { name: "Fat", value: Math.round(totals.fat ?? 0) },
-    { name: "Carbs", value: Math.round(totals.carbs ?? 0) },
-    { name: "Other", value: Math.round((totals.moisture ?? 0) * 0.1) },
+    { name: "Protein", key: "protein", value: Math.round(totals.protein ?? 0) },
+    { name: "Fat", key: "fat", value: Math.round(totals.fat ?? 0) },
+    { name: "Carbs", key: "carbs", value: Math.round(totals.carbs ?? 0) },
+    { name: "Other", key: "moisture", value: Math.round((totals.moisture ?? 0) * 0.1) },
   ].filter(d => d.value > 0);
 
   const groups = [...new Set(AAFCO.map(a => a.group))];
@@ -208,10 +242,10 @@ export function NutritionPage() {
                   </ResponsiveContainer>
                   <div className="flex-1 space-y-1.5">
                     {macroData.map((item, i) => (
-                      <div key={item.name} className="flex items-center justify-between text-xs">
+                      <button key={item.name} onClick={() => setDetail({ key: item.key, label: item.name, unit: "g" })} className="w-full flex items-center justify-between text-xs group">
                         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full shrink-0" style={{ background: chartColors[i % chartColors.length] }} />{item.name}</span>
-                        <span className="font-bold tabular-nums">{item.value}g</span>
-                      </div>
+                        <span className="font-bold tabular-nums group-hover:text-primary transition-colors">{item.value}g</span>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -228,9 +262,28 @@ export function NutritionPage() {
           <Card className="border-none shadow-sm bg-card">
             <CardContent className="p-4 space-y-4">
               {filteredCompliance.length === 0 && <div className="text-center text-sm text-muted-foreground py-4">No data for this group</div>}
-              {filteredCompliance.map(c => <ComplianceBar key={c.k as string} {...c} />)}
-            </CardContent>
+              {filteredCompliance.map(c => <ComplianceBar key={c.k as string} {...c} onClick={() => setDetail({ key: c.k as string, label: c.label, unit: c.unit })} />)}</CardContent>
           </Card>
+
+          <Dialog open={!!detail} onOpenChange={() => setDetail(null)}>
+            <DialogContent className="max-w-sm rounded-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="font-serif">{detail?.label} contributors</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-2 pt-2">
+                {!detail || !contributors[detail.key]?.length ? (
+                  <div className="text-sm text-muted-foreground text-center py-4">No contributor data available.</div>
+                ) : (
+                  contributors[detail.key].sort((a, b) => b.value - a.value).map((c, i) => (
+                    <div key={i} className="flex justify-between items-center bg-muted/40 rounded-lg px-3 py-2 text-sm">
+                      <span className="font-medium">{c.name}</span>
+                      <span className="text-xs text-muted-foreground">{c.value.toFixed(1)} {c.unit} · {c.amount.toFixed(1)} oz</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <div className="text-[10px] text-muted-foreground bg-muted/30 rounded-lg px-3 py-2 leading-relaxed">
             <strong>AAFCO 2016 adult maintenance.</strong> Targets scaled to actual kcal consumed ({Math.round(kcal)} kcal tracked). Totals include ingredient oz amounts + daily supplements (eggshell powder, iodized salt, psyllium husk, herb cube, broth).
